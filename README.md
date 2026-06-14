@@ -45,10 +45,10 @@ Every 3 seconds, these signals are fused into a **real-time Risk Score (0–100)
 
 | | URL |
 |---|---|
-| 🏠 Landing page | https://examshield-demo.vercel.app |
-| 📝 Student exam | https://examshield-demo.vercel.app/exam |
-| 📊 Admin dashboard | https://examshield-demo.vercel.app/dashboard |
-| 🔌 API health | https://examshield-api.onrender.com/api/health |
+| 🏠 Landing page | https://exam-shield-beta.vercel.app |
+| 📝 Student exam | https://exam-shield-beta.vercel.app/exam |
+| 📊 Admin dashboard | https://exam-shield-beta.vercel.app/dashboard |
+| 🔌 API health | https://examshield-api-production-1e2c.up.railway.app/api/health |
 
 **Demo in 30 seconds:** Open dashboard → click *Cheating Candidate* → watch the gauge climb from 14 → 94 with the red glow firing and alert banner sliding in.
 
@@ -71,7 +71,7 @@ Every 3 seconds, these signals are fused into a **real-time Risk Score (0–100)
             │ BehaviorSnapshot every 3s              │ RiskAssessment push
             ▼                                        ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  FASTAPI BACKEND  (Render)                                          │
+│  FASTAPI BACKEND  (Railway)                                         │
 │  ┌─────────────────────────────────────────────────────────────┐    │
 │  │  WebSocket Hub                                               │    │
 │  │  /ws/{session_id} ──► ML Pipeline ──► /ws-dashboard push   │    │
@@ -113,10 +113,10 @@ Every 3 seconds, these signals are fused into a **real-time Risk Score (0–100)
 | Frontend | Next.js 15, TypeScript | Production-grade, Vercel-native |
 | Styling | Tailwind CSS, Framer Motion | Premium dark UI, smooth animations |
 | Charts | Recharts | Real-time area chart, no canvas issues |
-| Backend | FastAPI, Python 3.12 | Async WS, fast startup, Render-friendly |
+| Backend | FastAPI, Python 3.12 | Async WS, fast startup, Railway-friendly |
 | ML Engine | scikit-learn Isolation Forest | Real anomaly detection, not rule-based |
 | Real-time | Native WebSocket (both sides) | Zero library overhead, reliable |
-| Deployment | Vercel + Render | Free tier, instant deploy from GitHub |
+| Deployment | Vercel + Railway | Free tier, instant deploy from GitHub |
 
 ---
 
@@ -164,16 +164,16 @@ npm run dev
 
 ## Deployment
 
-See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the complete Vercel + Render guide including the judge demo script.
+See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the complete Vercel + Railway guide including the judge demo script.
 
-**Backend → Render:**
+**Backend → Railway:**
 - Root: `backend/`
 - Build: `pip install -r requirements.txt`
 - Start: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 
 **Frontend → Vercel:**
 - Root: `frontend/`
-- Env: `NEXT_PUBLIC_WS_URL=wss://your-render-app.onrender.com`
+- Env: `NEXT_PUBLIC_WS_URL=wss://examshield-api-production-1e2c.up.railway.app`
 
 ---
 
@@ -185,7 +185,7 @@ See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the complete Vercel + Render guide in
 | 🟡 Suspicious Candidate | Long pauses, one tab switch | 35–60 |
 | 🔴 Cheating Candidate | Copy-paste, multiple tabs, abnormal speed | 85–95 |
 
-All three scenarios run **entirely client-side** — they work even if the Render backend is sleeping. This is the demo reliability guarantee.
+All three scenarios run **entirely client-side** — they work even if the Railway backend is sleeping. This is the demo reliability guarantee.
 
 ---
 
@@ -214,7 +214,7 @@ examshield/
 │   ├── models/session.py     # In-memory session store
 │   └── schemas/events.py     # Pydantic models
 │
-├── DEPLOYMENT.md             # Vercel + Render guide + judge demo script
+├── DEPLOYMENT.md             # Vercel + Railway guide + judge demo script
 └── README.md                 # This file
 ```
 
