@@ -1,0 +1,292 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   DESIGN TOKENS
+   Surface scale: 5 steps from near-black to overlay
+   One brand accent: indigo #6366F1 (NOT electric purple — deliberate restraint)
+   Three semantic risk colours that never appear elsewhere
+───────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    --surface-0: #04060E;   /* page base — deepest */
+    --surface-1: #080B14;   /* default card */
+    --surface-2: #0D1120;   /* raised card */
+    --surface-3: #121829;   /* overlay / input */
+    --surface-4: #1A2236;   /* hover state */
+
+    --brand:     #6366F1;   /* indigo — used sparingly */
+    --brand-dim: #4F46E5;
+
+    --risk-green:  #10B981;
+    --risk-amber:  #F59E0B;
+    --risk-red:    #EF4444;
+
+    --text-0: rgba(255,255,255,0.90);  /* headings */
+    --text-1: rgba(255,255,255,0.60);  /* body */
+    --text-2: rgba(255,255,255,0.35);  /* secondary */
+    --text-3: rgba(255,255,255,0.18);  /* placeholder / disabled */
+
+    --border-0: rgba(255,255,255,0.04);
+    --border-1: rgba(255,255,255,0.07);
+    --border-2: rgba(255,255,255,0.12);
+
+    /* Tailwind HSL compat (required for tw utilities) */
+    --background: 230 42% 5%;
+    --foreground: 210 30% 90%;
+    --card: 228 38% 7%;
+    --card-foreground: 210 30% 90%;
+    --border: 228 30% 13%;
+    --input: 228 30% 13%;
+    --ring: 239 84% 67%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 228 42% 5%;
+    --secondary: 228 28% 11%;
+    --secondary-foreground: 210 30% 82%;
+    --muted: 228 28% 11%;
+    --muted-foreground: 215 18% 48%;
+    --accent: 239 84% 67%;
+    --accent-foreground: 210 30% 90%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --radius: 0.75rem;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BASE RESET
+───────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--surface-0);
+    color: var(--text-0);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'rlig' 1, 'calt' 1, 'ss01' 1;
+    letter-spacing: -0.011em;
+    line-height: 1.5;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   GLASS SYSTEM  (3 levels of depth)
+───────────────────────────────────────────────────────────────────────────── */
+.glass {
+  background: rgba(255,255,255,0.028);
+  border: 1px solid var(--border-0);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+}
+.glass-md {
+  background: rgba(255,255,255,0.042);
+  border: 1px solid var(--border-1);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+}
+.glass-hi {
+  background: rgba(255,255,255,0.060);
+  border: 1px solid var(--border-2);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   TYPOGRAPHY UTILITIES
+───────────────────────────────────────────────────────────────────────────── */
+.label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* Tabular numerals — use on all scores, clocks, counts */
+.tabnum, [data-numeric], .font-mono {
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   NAV & PAGE CHROME
+───────────────────────────────────────────────────────────────────────────── */
+.nav-blur {
+  background: rgba(4, 6, 14, 0.80);
+  border-bottom: 1px solid var(--border-0);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   HERO BACKGROUNDS
+───────────────────────────────────────────────────────────────────────────── */
+.mesh-hero {
+  background:
+    radial-gradient(ellipse 70% 55% at 18% 0%,  rgba(99,102,241,0.14) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 40% at 82% 105%, rgba(99,102,241,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 35% 25% at 55% 55%,  rgba(16,185,129,0.05) 0%, transparent 65%),
+    var(--surface-0);
+}
+
+/* Dot-grid texture — hand-crafted, not a filter noise */
+.dot-grid {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   RISK SEMANTIC UTILITIES
+───────────────────────────────────────────────────────────────────────────── */
+.risk-low    { color: var(--risk-green); }
+.risk-medium { color: var(--risk-amber); }
+.risk-high   { color: var(--risk-red);   }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   KEYFRAME ANIMATIONS
+
+   Principle: each animation has ONE job. No stacked effects.
+   High-risk card: crimson glow bleeds outward — the signature moment.
+   Dot pulse: tight ring expansion for status indicators.
+   Score pop: number briefly scales up on change.
+   Alert: slides from above with spring-like overshoot.
+───────────────────────────────────────────────────────────────────────────── */
+
+/* Card-level glow — breathes slowly, never strobe */
+@keyframes glow-red {
+  0%, 100% {
+    box-shadow:
+      0 0 0   0px rgba(239,68,68,0.00),
+      0 0 32px 4px rgba(239,68,68,0.00),
+      inset 0 0 0 0px rgba(239,68,68,0.00);
+    border-color: rgba(239,68,68,0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 0   1px rgba(239,68,68,0.08),
+      0 0 48px 8px rgba(239,68,68,0.16),
+      inset 0 0 28px 0px rgba(239,68,68,0.04);
+    border-color: rgba(239,68,68,0.30);
+  }
+}
+@keyframes glow-amber {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245,158,11,0.00), 0 0 18px 2px rgba(245,158,11,0.00);
+    border-color: rgba(245,158,11,0.10);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(245,158,11,0.06), 0 0 28px 4px rgba(245,158,11,0.12);
+    border-color: rgba(245,158,11,0.22);
+  }
+}
+
+/* Dot pulse — status indicators */
+@keyframes pulse-dot-red {
+  0%         { box-shadow: 0 0 0 0   rgba(239,68,68,0.70); }
+  70%        { box-shadow: 0 0 0 6px rgba(239,68,68,0.00); }
+  100%       { box-shadow: 0 0 0 0   rgba(239,68,68,0.00); }
+}
+@keyframes pulse-dot-amber {
+  0%         { box-shadow: 0 0 0 0   rgba(245,158,11,0.65); }
+  70%        { box-shadow: 0 0 0 5px rgba(245,158,11,0.00); }
+  100%       { box-shadow: 0 0 0 0   rgba(245,158,11,0.00); }
+}
+@keyframes pulse-dot-green {
+  0%         { box-shadow: 0 0 0 0   rgba(16,185,129,0.60); }
+  70%        { box-shadow: 0 0 0 5px rgba(16,185,129,0.00); }
+  100%       { box-shadow: 0 0 0 0   rgba(16,185,129,0.00); }
+}
+
+/* Score pop — fires on score change */
+@keyframes score-pop {
+  0%   { transform: scale(1);    }
+  40%  { transform: scale(1.12); }
+  100% { transform: scale(1);    }
+}
+
+/* Alert banner — spring entrance from top */
+@keyframes slide-down {
+  0%   { opacity: 0; transform: translateY(-20px) scale(0.96); }
+  60%  { transform: translateY(3px)  scale(1.005); }
+  100% { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+/* Shimmer — loading skeleton */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+/* Float — ambient hero orbs */
+@keyframes float-a {
+  0%,100% { transform: translate(0, 0)   scale(1); }
+  33%     { transform: translate(8px,-14px) scale(1.04); }
+  66%     { transform: translate(-6px,8px)  scale(0.97); }
+}
+@keyframes float-b {
+  0%,100% { transform: translate(0, 0)   scale(1); }
+  40%     { transform: translate(-10px,12px) scale(1.05); }
+  70%     { transform: translate(7px,-8px)   scale(0.98); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ANIMATION UTILITY CLASSES
+───────────────────────────────────────────────────────────────────────────── */
+.risk-card-high {
+  animation: glow-red 2.8s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(239,68,68,0.04) 0%, rgba(255,255,255,0.025) 100%) !important;
+}
+.risk-card-medium {
+  animation: glow-amber 3.2s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(245,158,11,0.03) 0%, rgba(255,255,255,0.025) 100%) !important;
+}
+
+.pulse-high   { animation: pulse-dot-red   2s ease-out infinite; }
+.pulse-medium { animation: pulse-dot-amber 2.4s ease-out infinite; }
+.pulse-low    { animation: pulse-dot-green 2.8s ease-out infinite; }
+
+.score-pop    { animation: score-pop 0.35s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+.alert-enter  { animation: slide-down 0.42s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+.float-a      { animation: float-a 9s  ease-in-out infinite; }
+.float-b      { animation: float-b 11s ease-in-out infinite; }
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.04) 75%
+  );
+  background-size: 200% auto;
+  animation: shimmer 1.8s linear infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SCROLLBAR
+───────────────────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar          { width: 3px; height: 3px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: rgba(255,255,255,0.08); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   REDUCED MOTION  — respect prefers-reduced-motion
+───────────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
