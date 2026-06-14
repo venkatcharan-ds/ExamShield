@@ -1649,7 +1649,7 @@ export default function DashboardPage() {
 
   /* Backend WS for live student sessions */
   useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8000'
+    const base = process.env.NEXT_PUBLIC_WS_URL ?? "wss://examshield-api-production-1e2c.up.railway.app"
     const url  = `${toWsUrl(base)}/ws-dashboard`
     let ws: WebSocket, timer: ReturnType<typeof setTimeout>, attempts = 0
 

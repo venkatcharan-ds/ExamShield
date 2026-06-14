@@ -46,7 +46,7 @@ export function useWebSocket({
   const connect = useCallback(() => {
     if (!enabled || !sessionId || !mountedRef.current) return
 
-    const base   = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8000'
+    const base   = process.env.NEXT_PUBLIC_WS_URL ?? "wss://examshield-api-production-1e2c.up.railway.app"
     const wsBase = toWsUrl(base)
     const url    = `${wsBase}/ws/${sessionId}`
 
