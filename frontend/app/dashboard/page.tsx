@@ -1738,11 +1738,13 @@ export default function DashboardPage() {
   useEffect(() => () => clearT(), [])
 
   /* Derived */
-  const riskScore  = session?.current_risk_score ?? 0
-  const riskLevel  = session?.risk_level ?? 'low'
-  const riskColor  = getRiskColor(riskScore)
-  const alertCount = (session?.timeline ?? []).filter(e => e.severity !== 'info').length
-  const chartData  = (session?.risk_history ?? []).map((h, i) => ({ t: i, score: Math.round(h.score) }))
+  const riskScore    = session?.current_risk_score ?? 0
+  const riskLevel    = session?.risk_level ?? 'low'
+  const riskColor    = getRiskColor(riskScore)
+  const alertCount   = (session?.timeline ?? []).filter(e => e.severity !== 'info').length
+  const chartData    = (session?.risk_history ?? []).map((h, i) => ({ t: i, score: Math.round(h.score) }))
+  /* Demo-scenario sessions are client-side simulations (session_id: `demo-*`) — never real candidate data */
+  const isDemoSession = session?.session_id?.startsWith('demo-') ?? false
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--surface-0)' }}>
@@ -1783,8 +1785,15 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             {/* Connection badge */}
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
-              style={{ background: 'var(--surface-2)', border: '1px solid var(--border-0)' }}>
-              {wsConnected ? (
+              style={isDemoSession
+                ? { background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)' }
+                : { background: 'var(--surface-2)', border: '1px solid var(--border-0)' }}>
+              {isDemoSession ? (
+                <>
+                  <AlertTriangle className="w-3 h-3" style={{ color: '#F59E0B' }} />
+                  <span className="text-[11px] font-bold tracking-wide" style={{ color: '#FCD34D' }}>SIMULATION MODE</span>
+                </>
+              ) : wsConnected ? (
                 <>
                   <div className="w-1.5 h-1.5 rounded-full pulse-low" style={{ background: 'var(--risk-green)' }} />
                   <span className="text-[11px] font-medium" style={{ color: '#6EE7B7', opacity: 0.75 }}>LIVE</span>
@@ -1848,7 +1857,16 @@ export default function DashboardPage() {
                 {session ? (
                   <div className="h-full flex flex-col justify-between">
                     <div>
-                      <div className="label mb-2">Candidate</div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="label">Candidate</div>
+                        {isDemoSession && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase"
+                            style={{ color: '#FCD34D', background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.35)' }}>
+                            <AlertTriangle className="w-2.5 h-2.5" />
+                            Simulated data — not a real candidate
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-start gap-2 mb-4">
                         <div>
                           <h2 className="text-base font-semibold mb-1.5" style={{ color: 'var(--text-0)' }}>
