@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { AuthShell, AuthField, AuthError, AuthSubmitButton, GitHubButton, AuthDivider } from '@/components/AuthShell'
+import { AuthShell, AuthField, AuthError, AuthSubmitButton } from '@/components/AuthShell'
 
 function SignInForm() {
   const searchParams = useSearchParams()
@@ -14,7 +14,6 @@ function SignInForm() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [githubLoading, setGithubLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,21 +41,6 @@ function SignInForm() {
     // Full navigation (not router.push) so the just-set session cookie is
     // guaranteed to be present on the next request middleware sees.
     window.location.href = next
-  }
-
-  const handleGitHub = async () => {
-    setError('')
-    setGithubLoading(true)
-    const supabase = createClient()
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=${next}` },
-    })
-    if (oauthError) {
-      setError('GitHub sign in failed. Try again.')
-      setGithubLoading(false)
-    }
-    // On success, Supabase redirects the browser away — no further action needed here.
   }
 
   return (
@@ -102,10 +86,6 @@ function SignInForm() {
           Sign In
         </AuthSubmitButton>
       </form>
-
-      <AuthDivider />
-
-      <GitHubButton onClick={handleGitHub} loading={githubLoading} />
     </AuthShell>
   )
 }

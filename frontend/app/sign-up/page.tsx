@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { AuthShell, AuthField, AuthError, AuthSuccess, AuthSubmitButton, GitHubButton, AuthDivider } from '@/components/AuthShell'
+import { AuthShell, AuthField, AuthError, AuthSuccess, AuthSubmitButton } from '@/components/AuthShell'
 
 function passwordIssue(password: string): string | null {
   if (password.length < 8) return 'Password must be at least 8 characters.'
@@ -18,7 +18,6 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [githubLoading, setGithubLoading] = useState(false)
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,20 +55,6 @@ export default function SignUpPage() {
       setAwaitingConfirmation(true)
     } else if (data.session) {
       window.location.href = '/dashboard'
-    }
-  }
-
-  const handleGitHub = async () => {
-    setError('')
-    setGithubLoading(true)
-    const supabase = createClient()
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/dashboard` },
-    })
-    if (oauthError) {
-      setError('GitHub sign up failed. Try again.')
-      setGithubLoading(false)
     }
   }
 
@@ -139,10 +124,6 @@ export default function SignUpPage() {
           Create Account
         </AuthSubmitButton>
       </form>
-
-      <AuthDivider />
-
-      <GitHubButton onClick={handleGitHub} loading={githubLoading} />
     </AuthShell>
   )
 }

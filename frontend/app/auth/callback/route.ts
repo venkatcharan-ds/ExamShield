@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 /**
- * Shared callback for GitHub OAuth, email-confirmation links, and
- * password-reset links — Supabase's PKCE flow redirects here with a `code`
- * that must be exchanged for a session before the destination page can use it.
+ * Shared callback for email-confirmation links and password-reset links —
+ * Supabase's PKCE flow redirects here with a `code` that must be exchanged
+ * for a session before the destination page can use it.
  */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
