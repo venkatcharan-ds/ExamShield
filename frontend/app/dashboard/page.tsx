@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { UserMenu } from '@/components/UserMenu'
 import {
   Shield, Activity, AlertTriangle, CheckCircle, Clock,
   Users, WifiOff, Play, RotateCcw, ExternalLink, X,
@@ -1815,6 +1816,8 @@ export default function DashboardPage() {
               <ExternalLink className="w-3 h-3" />
               Student Portal
             </Link>
+
+            <UserMenu />
           </div>
         </div>
       </header>
