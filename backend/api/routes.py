@@ -10,7 +10,7 @@ from ml.isolation_forest import engine
 from ml.consent_firewall import firewall
 from models.session import store
 from models.consent import store as consent_store
-from schemas.events import BehaviorSnapshot
+from schemas.events import BehaviorSnapshot, BehaviorFeatures, RiskAssessment
 
 _BEHAVIOR_DATA_CATEGORIES = ["keystroke_timing", "mouse_movement", "tab_switching"]
 router = APIRouter()
@@ -26,6 +26,26 @@ async def _broadcast_to_dashboard(data: dict) -> None:
         except Exception:
             dead.add(ws)
     _dashboard_listeners.difference_update(dead)
+
+
+def _cumulative_assessment(snapshot: BehaviorSnapshot, session):
+    """Score the candidate from session-wide telemetry, not only one 3s window."""
+    window_seconds = max((snapshot.window_end - snapshot.window_start) / 1000.0, 0.1)
+    window_assessment = engine.assess(snapshot)
+    cumulative = BehaviorFeatures(**session.accumulate_features(window_assessment.features.model_dump(), window_seconds))
+    risk_score, anomaly_score = engine._compute_risk(cumulative)
+    flags = engine._get_flags(cumulative)
+    risk_level = "high" if risk_score > 70 else "medium" if risk_score > 30 else "low"
+    return RiskAssessment(
+        session_id=snapshot.session_id,
+        candidate_name=snapshot.candidate_name,
+        risk_score=risk_score,
+        risk_level=risk_level,
+        anomaly_score=anomaly_score,
+        features=cumulative,
+        timestamp=window_assessment.timestamp,
+        triggered_flags=flags,
+    ), window_assessment.triggered_flags
 
 
 @router.websocket("/ws/{session_id}")
@@ -79,7 +99,7 @@ async def exam_websocket(websocket: WebSocket, session_id: str, token: str = Que
                 sid = payload.get("session_id", session_id)
                 session = store.get(sid)
                 if session is None:
-                    continue  # race: progress update before session_start; ignore safely
+                    continue
                 if session.user_id != user_id:
                     await websocket.close(code=1008, reason="Session ownership mismatch")
                     return
@@ -114,12 +134,16 @@ async def exam_websocket(websocket: WebSocket, session_id: str, token: str = Que
                             await _broadcast_to_dashboard(session.to_dict())
                             continue
 
-                    assessment = engine.assess(snapshot)
+                    # One authoritative session state drives both the dashboard
+                    # metrics and the final score. Timeline flags remain scoped
+                    # to this window so historical events are not duplicated.
+                    assessment, window_flags = _cumulative_assessment(snapshot, session)
                     session.add_risk_event(
                         risk_score=assessment.risk_score,
                         risk_level=assessment.risk_level,
                         features=assessment.features.model_dump(),
                         flags=assessment.triggered_flags,
+                        timeline_flags=window_flags,
                     )
                     await websocket.send_json({"type": "risk_update", "payload": assessment.model_dump()})
                     await _broadcast_to_dashboard(session.to_dict())
