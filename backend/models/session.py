@@ -37,6 +37,66 @@ class SessionState:
     questions_total: Optional[int] = None
     questions_answered: int = 0
 
+    # Session-wide telemetry accumulators. The previous implementation stored
+    # only the latest 3-second window, which made dashboard metrics fall back
+    # to zero as soon as that window contained no events.
+    telemetry_window_seconds: float = 0.0
+    telemetry_keydowns: int = 0
+    telemetry_key_interval_sum: float = 0.0
+    telemetry_key_interval_count: int = 0
+    telemetry_key_variance_sum: float = 0.0
+    telemetry_key_variance_weight: int = 0
+    telemetry_mouse_events: int = 0
+    telemetry_idle_seconds: float = 0.0
+    telemetry_tab_switches: int = 0
+    telemetry_copy_events: int = 0
+    telemetry_paste_events: int = 0
+
+    def accumulate_features(self, features: dict, window_seconds: float) -> dict:
+        """Merge one telemetry window into authoritative session metrics."""
+        window_seconds = max(float(window_seconds), 0.0)
+        self.telemetry_window_seconds += window_seconds
+
+        # typing_speed is keys/minute, so recover the approximate key count for
+        # this window and use it to build a session-wide rate.
+        keydowns = max(0, round(float(features.get("typing_speed", 0.0)) * window_seconds / 60.0))
+        self.telemetry_keydowns += keydowns
+
+        interval_samples = max(0, keydowns - 1)
+        if interval_samples > 0:
+            avg_interval = max(0.0, float(features.get("average_key_interval", 0.0)))
+            self.telemetry_key_interval_sum += avg_interval * interval_samples
+            self.telemetry_key_interval_count += interval_samples
+            self.telemetry_key_variance_sum += max(0.0, float(features.get("key_variance", 0.0))) * interval_samples
+            self.telemetry_key_variance_weight += interval_samples
+
+        mouse_events = max(0, round(float(features.get("mouse_activity", 0.0)) * window_seconds))
+        self.telemetry_mouse_events += mouse_events
+        self.telemetry_idle_seconds += max(0.0, float(features.get("idle_duration", 0.0)))
+        self.telemetry_tab_switches += max(0, int(features.get("tab_switch_count", 0)))
+        self.telemetry_copy_events += max(0, int(features.get("copy_count", 0)))
+        self.telemetry_paste_events += max(0, int(features.get("paste_count", 0)))
+
+        total_seconds = max(self.telemetry_window_seconds, 0.1)
+        return {
+            "typing_speed": round((self.telemetry_keydowns / total_seconds) * 60.0, 2),
+            "average_key_interval": round(
+                self.telemetry_key_interval_sum / self.telemetry_key_interval_count,
+                2,
+            ) if self.telemetry_key_interval_count else float(features.get("average_key_interval", 300.0)),
+            "key_variance": round(
+                self.telemetry_key_variance_sum / self.telemetry_key_variance_weight,
+                2,
+            ) if self.telemetry_key_variance_weight else float(features.get("key_variance", 1000.0)),
+            "mouse_activity": round(self.telemetry_mouse_events / total_seconds, 2),
+            "idle_duration": round(self.telemetry_idle_seconds, 2),
+            # These are intentionally cumulative for the candidate card and
+            # risk scoring. The forensic timeline remains event-by-event.
+            "tab_switch_count": min(100, self.telemetry_tab_switches),
+            "copy_count": min(100, self.telemetry_copy_events),
+            "paste_count": min(100, self.telemetry_paste_events),
+        }
+
     def add_risk_event(self, risk_score: float, risk_level: str, features: dict, flags: List[str]) -> None:
         now = time.time() * 1000
         self.current_risk_score = risk_score
@@ -44,6 +104,9 @@ class SessionState:
         self.features_snapshot = features
         self.risk_history.append({"time": now, "score": risk_score})
 
+        # Flags are generated from the current telemetry window, so each
+        # forensic entry represents a real event observed at that time rather
+        # than re-emitting all historical flags on every snapshot.
         for flag in flags:
             severity = "critical" if risk_score > 70 else "warning" if risk_score > 30 else "info"
             self.timeline.append({
