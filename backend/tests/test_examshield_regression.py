@@ -102,3 +102,67 @@ def test_dashboard_websocket_initial_state():
         msg = ws.receive_json()
         assert msg["type"] == "initial_state"
         assert msg["payload"] == []
+
+
+def test_session_start_records_exam_name_and_question_total():
+    """Real exam sessions report which exam they're taking and how many
+    questions it has, so the admin dashboard can show genuine progress
+    instead of a generic 'Demo Candidate' placeholder."""
+    session_id = "reg-session-exam-1"
+    with client.websocket_connect(f"/ws/{session_id}") as ws:
+        ws.send_json({"type": "session_start", "payload": {
+            "session_id": session_id, "candidate_name": "Real Candidate",
+            "exam_name": "Computer Science & Data Science Assessment",
+            "questions_total": 30,
+        }})
+        ws.receive_json()
+
+    session = session_store.get(session_id)
+    assert session.exam_name == "Computer Science & Data Science Assessment"
+    assert session.questions_total == 30
+    assert session.questions_answered == 0
+    assert session.to_dict()["exam_name"] == "Computer Science & Data Science Assessment"
+
+
+def test_session_start_without_exam_name_leaves_it_none():
+    """Non-exam callers (e.g. anything hitting /ws directly without exam
+    metadata) must not be forced into the new fields — they stay None,
+    exactly as before this feature existed."""
+    session_id = "reg-session-no-exam"
+    with client.websocket_connect(f"/ws/{session_id}") as ws:
+        ws.send_json({"type": "session_start", "payload": {"session_id": session_id, "candidate_name": "Plain"}})
+        ws.receive_json()
+
+    session = session_store.get(session_id)
+    assert session.exam_name is None
+    assert session.questions_total is None
+    assert session.to_dict()["exam_name"] is None
+
+
+def test_exam_progress_updates_session_and_broadcasts():
+    session_id = "reg-session-progress"
+    with client.websocket_connect(f"/ws/{session_id}") as ws:
+        ws.send_json({"type": "session_start", "payload": {
+            "session_id": session_id, "candidate_name": "Progress Test", "questions_total": 30,
+        }})
+        ws.receive_json()
+
+        ws.send_json({"type": "exam_progress", "payload": {
+            "session_id": session_id, "questions_answered": 12, "questions_total": 30,
+        }})
+        # exam_progress has no direct client ack — assert via store state instead.
+
+    session = session_store.get(session_id)
+    assert session.questions_answered == 12
+    assert session.questions_total == 30
+
+
+def test_exam_progress_for_unknown_session_does_not_crash():
+    with client.websocket_connect("/ws/reg-session-ghost") as ws:
+        ws.send_json({"type": "exam_progress", "payload": {
+            "session_id": "session-that-was-never-started", "questions_answered": 5, "questions_total": 30,
+        }})
+        # Should not raise or close the connection — send a ping to prove the socket is still alive.
+        ws.send_json({"type": "ping"})
+        pong = ws.receive_json()
+    assert pong == {"type": "pong", "payload": None}

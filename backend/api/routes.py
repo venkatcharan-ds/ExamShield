@@ -76,11 +76,28 @@ async def exam_websocket(websocket: WebSocket, session_id: str):
                 cand_name = payload.get("candidate_name", "Unknown Candidate")
                 sid = payload.get("session_id", session_id)
                 session = store.get_or_create(sid, cand_name)
+                exam_name = payload.get("exam_name")
+                if exam_name:
+                    session.exam_name = exam_name
+                questions_total = payload.get("questions_total")
+                if questions_total:
+                    session.questions_total = questions_total
                 await websocket.send_json({
                     "type": "session_ack",
                     "payload": {"session_id": sid},
                 })
                 await _broadcast_to_dashboard(session.to_dict())
+
+            elif msg_type == "exam_progress":
+                payload = data.get("payload", {})
+                sid = payload.get("session_id", session_id)
+                session = store.get(sid)
+                if session:
+                    if payload.get("questions_answered") is not None:
+                        session.questions_answered = payload["questions_answered"]
+                    if payload.get("questions_total") is not None:
+                        session.questions_total = payload["questions_total"]
+                    await _broadcast_to_dashboard(session.to_dict())
 
             elif msg_type == "behavior_snapshot":
                 try:

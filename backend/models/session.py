@@ -39,6 +39,9 @@ class SessionState:
     timeline: List[Dict] = field(default_factory=list)
     features_snapshot: Optional[Dict] = None
     is_active: bool = True
+    exam_name: Optional[str] = None
+    questions_total: Optional[int] = None
+    questions_answered: int = 0
 
     def add_risk_event(self, risk_score: float, risk_level: str, features: dict, flags: List[str]) -> None:
         now = time.time() * 1000
@@ -83,6 +86,9 @@ class SessionState:
             "timeline": self.timeline[-20:],           # last 20 events
             "features": self.features_snapshot,
             "started_at": self.started_at,
+            "exam_name": self.exam_name,
+            "questions_total": self.questions_total,
+            "questions_answered": self.questions_answered,
         }
 
 

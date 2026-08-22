@@ -8,6 +8,8 @@ type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error'
 interface UseWebSocketOptions {
   sessionId: string
   candidateName: string
+  examName?: string
+  questionsTotal?: number
   onRiskUpdate?: (assessment: RiskAssessment) => void
   enabled?: boolean
 }
@@ -28,6 +30,8 @@ function toWsUrl(raw: string): string {
 export function useWebSocket({
   sessionId,
   candidateName,
+  examName,
+  questionsTotal,
   onRiskUpdate,
   enabled = true,
 }: UseWebSocketOptions): UseWebSocketReturn {
@@ -63,7 +67,12 @@ export function useWebSocket({
         // Register session with backend
         ws.send(JSON.stringify({
           type: 'session_start',
-          payload: { session_id: sessionId, candidate_name: candidateName },
+          payload: {
+            session_id: sessionId,
+            candidate_name: candidateName,
+            ...(examName ? { exam_name: examName } : {}),
+            ...(questionsTotal ? { questions_total: questionsTotal } : {}),
+          },
         }))
       }
 
@@ -98,7 +107,7 @@ export function useWebSocket({
     } catch {
       if (mountedRef.current) setConnectionState('error')
     }
-  }, [sessionId, candidateName, enabled])
+  }, [sessionId, candidateName, examName, questionsTotal, enabled])
 
   useEffect(() => {
     mountedRef.current = true

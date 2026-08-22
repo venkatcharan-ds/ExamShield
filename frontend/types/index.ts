@@ -66,13 +66,21 @@ export interface CandidateSession {
   timeline: TimelineEvent[]
   features: BehaviorFeatures | null
   started_at: number
+  exam_name?: string | null
+  questions_total?: number | null
+  questions_answered?: number
 }
 
 export type DemoScenario = 'normal' | 'suspicious' | 'cheating'
 
 export interface WebSocketMessage {
-  type: 'behavior_snapshot' | 'risk_update' | 'session_start' | 'ping'
-  payload: BehaviorSnapshot | RiskAssessment | { session_id: string; candidate_name: string } | null
+  type: 'behavior_snapshot' | 'risk_update' | 'session_start' | 'ping' | 'exam_progress'
+  payload:
+    | BehaviorSnapshot
+    | RiskAssessment
+    | { session_id: string; candidate_name: string; exam_name?: string; questions_total?: number }
+    | { session_id: string; questions_answered: number; questions_total: number }
+    | null
 }
 
 /* ─── Consent Lifecycle & Drift Detection ───────────────────────────────── */

@@ -1965,6 +1965,26 @@ export default function DashboardPage() {
                           </motion.div>
                         </div>
                       </div>
+                      {session.exam_name && (
+                        <div className="grid grid-cols-2 gap-2.5 mb-4">
+                          <div className="rounded-lg px-3 py-2" style={{ background: 'var(--surface-3)' }}>
+                            <div className="text-[9px] uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-3)' }}>Exam</div>
+                            <div className="text-[12px] font-medium truncate" style={{ color: 'var(--text-1)' }}>{session.exam_name}</div>
+                          </div>
+                          <div className="rounded-lg px-3 py-2" style={{ background: 'var(--surface-3)' }}>
+                            <div className="text-[9px] uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-3)' }}>Progress</div>
+                            <div className="text-[12px] font-medium tabnum" style={{ color: 'var(--text-1)' }}>
+                              {session.questions_answered ?? 0} / {session.questions_total ?? '—'}
+                            </div>
+                          </div>
+                          <div className="rounded-lg px-3 py-2 col-span-2" style={{ background: 'var(--surface-3)' }}>
+                            <div className="text-[9px] uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-3)' }}>Status</div>
+                            <div className="text-[12px] font-medium" style={{ color: session.exam_status === 'active' ? '#6EE7B7' : 'var(--text-1)' }}>
+                              {session.exam_status === 'active' ? 'In Progress' : 'Completed'}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-2">
@@ -2037,8 +2057,8 @@ export default function DashboardPage() {
             {/* Demo controls */}
             <div className="rounded-2xl p-5"
               style={{ background: 'var(--surface-1)', border: '1px solid var(--border-0)' }}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="label">Demo scenarios</div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="label">Testing &amp; Simulation</div>
                 {session && (
                   <button onClick={reset}
                     className="p-1.5 rounded-lg transition-colors duration-150"
@@ -2047,6 +2067,9 @@ export default function DashboardPage() {
                   </button>
                 )}
               </div>
+              <p className="text-[10px] mb-3" style={{ color: 'var(--text-3)' }}>
+                Simulated candidates for demoing the risk engine — not real exam sessions.
+              </p>
               <DemoControls onRun={runScenario} active={activeScenario} running={isRunning} />
               <p className="text-[10px] mt-3 leading-relaxed" style={{ color: 'var(--text-3)' }}>
                 Client-side simulation — works without a backend connection. Numbers in brackets
