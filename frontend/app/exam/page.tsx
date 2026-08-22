@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Shield, Clock, AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Send, X } from 'lucide-react'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useBehaviorTracker } from '@/hooks/useBehaviorTracker'
-import { QUESTION_BANK, EXAM_NAME, EXAM_DURATION_MINUTES, shuffleQuestions, type ExamQuestion, type QuestionDifficulty } from '@/services/questionBank'
+import { QUESTION_BANK, EXAM_NAME, EXAM_DURATION_MINUTES, shuffleQuestions, isAnswerCorrect, type ExamQuestion, type QuestionDifficulty } from '@/services/questionBank'
 import type { RiskAssessment, BehaviorSnapshot } from '@/types'
 
 const SESSION_ID     = `exam-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
@@ -25,12 +25,12 @@ interface GradeResult {
   percentage: number
 }
 
-function gradeExam(questions: ExamQuestion[], answers: Record<string, number>): GradeResult {
+function gradeExam(questions: ExamQuestion[], answers: Record<string, string>): GradeResult {
   let correct = 0, incorrect = 0, unanswered = 0
   for (const q of questions) {
     const given = answers[q.id]
-    if (given === undefined) unanswered++
-    else if (given === q.correctIndex) correct++
+    if (!given || !given.trim()) unanswered++
+    else if (isAnswerCorrect(q, given)) correct++
     else incorrect++
   }
   return { correct, incorrect, unanswered, total: questions.length, percentage: Math.round((correct / questions.length) * 100) }
@@ -94,7 +94,7 @@ export default function ExamPage() {
   const [started,    setStarted]    = useState(false)
   const [submitted,  setSubmitted]  = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [answers,    setAnswers]    = useState<Record<string, number>>({})
+  const [answers,    setAnswers]    = useState<Record<string, string>>({})
   const [showConfirm, setShowConfirm] = useState(false)
   const [results,    setResults]    = useState<GradeResult | null>(null)
   const [assessment, setAssessment] = useState<RiskAssessment | null>(null)
@@ -137,8 +137,8 @@ export default function ExamPage() {
     })
   }, [answeredCount, started, submitted, isConnected, send, questions.length])
 
-  const selectAnswer = useCallback((qid: string, idx: number) => {
-    setAnswers(prev => ({ ...prev, [qid]: idx }))
+  const updateAnswer = useCallback((qid: string, text: string) => {
+    setAnswers(prev => ({ ...prev, [qid]: text }))
   }, [])
 
   const doSubmit = useCallback(() => {
@@ -150,7 +150,7 @@ export default function ExamPage() {
     fetch(`${API_BASE}/api/sessions/${SESSION_ID}/end`, { method: 'POST' }).catch(() => {})
   }, [questions, answers])
 
-  const answeredSet = new Set(questions.map((q, i) => (answers[q.id] !== undefined ? i : -1)).filter(i => i >= 0))
+  const answeredSet = new Set(questions.map((q, i) => (answers[q.id]?.trim() ? i : -1)).filter(i => i >= 0))
 
   /* ── Results ────────────────────────────────────────────────────────────── */
   if (submitted && results) return (
@@ -254,7 +254,7 @@ export default function ExamPage() {
           {/* Exam details */}
           <ul className="space-y-2.5 mb-8">
             {[
-              `${EXAM_DURATION_MINUTES} minutes · ${QUESTION_BANK.length} multiple-choice questions`,
+              `${EXAM_DURATION_MINUTES} minutes · ${QUESTION_BANK.length} short-answer questions`,
               'Covers data structures, algorithms, databases, Python, statistics, ML, networks & OS',
               'AI behavioral monitoring active throughout',
               'Tab switches and paste events are recorded',
@@ -434,28 +434,23 @@ export default function ExamPage() {
             {q.question}
           </p>
 
-          <div className="space-y-2.5">
-            {q.options.map((opt, idx) => {
-              const selected = answers[q.id] === idx
-              return (
-                <button key={idx} onClick={() => selectAnswer(q.id, idx)}
-                  className="w-full text-left px-4 py-3 rounded-xl text-sm flex items-start gap-3 transition-all duration-150"
-                  style={{
-                    background: selected ? 'rgba(99,102,241,0.12)' : 'var(--surface-3)',
-                    border: `1px solid ${selected ? 'var(--brand)' : 'var(--border-1)'}`,
-                    color: selected ? '#C7D2FE' : 'var(--text-1)',
-                  }}>
-                  <span className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold mt-0.5"
-                    style={{
-                      background: selected ? 'var(--brand)' : 'var(--surface-2)',
-                      color: selected ? 'white' : 'var(--text-3)',
-                    }}>
-                    {String.fromCharCode(65 + idx)}
-                  </span>
-                  <span className="whitespace-pre-line leading-relaxed">{opt}</span>
-                </button>
-              )
-            })}
+          <div>
+            <textarea
+              key={q.id}
+              value={answers[q.id] ?? ''}
+              onChange={e => updateAnswer(q.id, e.target.value)}
+              placeholder="Type your answer here…"
+              rows={4}
+              className="w-full px-4 py-3 rounded-xl text-sm leading-relaxed resize-none transition-all duration-150 focus:outline-none"
+              style={{
+                background: 'var(--surface-3)',
+                border: `1px solid ${answers[q.id]?.trim() ? 'var(--brand)' : 'var(--border-1)'}`,
+                color: 'var(--text-1)',
+              }}
+            />
+            <div className="mt-2 text-[11px]" style={{ color: 'var(--text-3)' }}>
+              Short answer — a word or short phrase is enough.
+            </div>
           </div>
 
           <div className="flex items-center justify-between mt-6 pt-5" style={{ borderTop: '1px solid var(--border-0)' }}>
