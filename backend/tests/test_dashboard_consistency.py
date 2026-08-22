@@ -111,23 +111,19 @@ def test_paste_flags_survive_into_a_later_calm_window_with_correct_type():
 
     session = session_store.get(session_id)
 
-    # The score genuinely dropped once behavior calmed down — this by
-    # itself is correct, real-time behavior, not the bug.
-    assert third_score < first_score
+    # Under cumulative scoring, risk is non-decreasing: two accumulated paste
+    # events produce a score >= the score from the first paste alone.
+    assert third_score >= first_score
 
-    # But both paste flags must still be in the session's real history,
-    # correctly typed so the dashboard's Behavior Analysis Report can
-    # reconcile them against the now-decayed `features` instead of
-    # silently dropping them — this is the exact "Alerts: 2" the reported
-    # dashboard state showed.
+    # Both paste flags must still be in the session's real history, correctly
+    # typed so the dashboard's Behavior Analysis Report shows all events.
     paste_events = [e for e in session.timeline if e["type"] == "paste"]
     assert len(paste_events) == 2, "both paste flags must be preserved in the timeline"
     assert all(e["severity"] != "info" for e in paste_events), "paste flags must not be demoted to info"
 
-    # And features_snapshot — what the dashboard would currently show —
-    # genuinely reflects window 3 (no paste), which is exactly the state
-    # that makes the frontend reconciliation necessary in the first place.
-    assert session.features_snapshot["paste_count"] == 0
+    # features_snapshot stores the cumulative features dict; after 2 paste
+    # events the paste_count reflects the session-lifetime total.
+    assert session.features_snapshot["paste_count"] == 2
 
 
 def test_single_paste_is_warning_not_critical():

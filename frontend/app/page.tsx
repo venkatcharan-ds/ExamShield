@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { motion, useInView, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import ThreeBackground from '@/components/ThreeBackground'
 import {
   Shield, EyeOff, Brain, Activity, ChevronRight,
   Keyboard, MousePointer, LayoutGrid, Zap,
@@ -11,7 +12,7 @@ import {
 } from 'lucide-react'
 
 /* ─── Easing curves ──────────────────────────────────────────────────────── */
-const EASE = [0.22, 1, 0.36, 1] as const
+const EASE = [0.16, 1, 0.3, 1] as const // cinematic cubic-bezier
 
 const rise = (delay = 0) => ({
   initial: { opacity: 0, y: 22 },
@@ -172,11 +173,19 @@ function CyberBackground() {
 }
 
 export default function LandingPage() {
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10)
+    window.addEventListener('scroll', onScroll)
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   return (
     <div className="min-h-screen relative" style={{ background: 'var(--surface-0)' }}>
 
       {/* ── Navigation ────────────────────────────────────────────────────── */}
-      <nav className="nav-blur fixed top-0 inset-x-0 z-50">
+      <nav className={scrolled ? "nav-blur fixed top-0 inset-x-0 z-50 bg-white/10 backdrop-blur-lg transition-colors" : "nav-blur fixed top-0 inset-x-0 z-50"}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
             <div
@@ -247,7 +256,7 @@ export default function LandingPage() {
 
       {/* ── Hero Section ──────────────────────────────────────────────────── */}
       <section className="relative pt-36 pb-24 px-6 overflow-hidden">
-        <CyberBackground />
+        <ThreeBackground />
 
         <div className="relative z-10 max-w-5xl mx-auto text-center">
           {/* Track Badge */}
