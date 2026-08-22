@@ -198,8 +198,8 @@ def test_withdrawal_preserves_audit_history():
 def test_aligned_context_has_no_drift():
     context = ConsentContext(purpose=["examination_integrity"], data_categories=["keystroke_timing"])
     record = ConsentRecord(
-        consent_id="c1", subject_id="s1", subject_type="exam_session",
-        consent_type="behavioral_monitoring",
+        consent_id="c1", subject_id="s1", owner_user_id="test-user",
+        subject_type="exam_session", consent_type="behavioral_monitoring",
         granted_at=time.time() * 1000, expires_at=time.time() * 1000 + 1_000_000,
         status="active", original_context=context, current_context=context.clone(),
     )

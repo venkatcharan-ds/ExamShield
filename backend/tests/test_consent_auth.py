@@ -17,17 +17,26 @@ from fastapi.testclient import TestClient
 
 from main import app
 from auth import require_user
+import auth as _auth_module
 from models.consent import store as consent_store
 
 client = TestClient(app)
 
 _REAL_SUPABASE_URL = "https://gimsfuhxlwkjtiytlyql.supabase.co"  # public project URL, not a secret
+# Save real function before conftest's monkeypatch can replace it.
+_real_verify_supabase_claims = _auth_module.verify_supabase_claims
 
 
 @pytest.fixture(autouse=True)
-def _use_real_auth_dependency():
-    """Undo conftest's default override so these tests hit the real check."""
+def _use_real_auth_dependency(_authenticated_by_default, monkeypatch):
+    """Undo conftest's default override so these tests hit the real auth check.
+
+    Depends on _authenticated_by_default to guarantee this runs AFTER conftest's
+    autouse fixture (which adds the override), so we reliably remove it here.
+    We also restore the real verify_supabase_claims that conftest monkeypatched.
+    """
     app.dependency_overrides.pop(require_user, None)
+    monkeypatch.setattr(_auth_module, "verify_supabase_claims", _real_verify_supabase_claims)
     os.environ["SUPABASE_URL"] = _REAL_SUPABASE_URL
     yield
     app.dependency_overrides[require_user] = lambda: "test-user-id"
@@ -79,7 +88,11 @@ def test_missing_supabase_url_fails_closed_not_open():
     endpoints must refuse everything (503) rather than silently accept
     requests as if they were authenticated."""
     del os.environ["SUPABASE_URL"]
-    r = client.post("/api/consent/grant", json={"subject_id": "auth-4"})
+    r = client.post(
+        "/api/consent/grant",
+        json={"subject_id": "auth-4"},
+        headers={"Authorization": "Bearer some-garbage-token"},
+    )
     assert r.status_code == 503
 
 
@@ -107,20 +120,26 @@ def test_authorized_full_mutation_lifecycle_succeeds():
         app.dependency_overrides.pop(require_user, None)
 
 
-# ─── Read-only / decision endpoints stay open (documented, not an oversight) ─
+# ─── Read-only / decision endpoints ──────────────────────────────────────────
 
-def test_read_endpoints_do_not_require_auth():
+def test_read_endpoints_require_auth():
+    """GET /consent and /consent/timeline are owner-scoped and require auth."""
     app.dependency_overrides[require_user] = lambda: "test-user-id"
     try:
         client.post("/api/consent/grant", json={"subject_id": "auth-7"})
+        assert client.get("/api/consent/auth-7").status_code == 200
+        assert client.get("/api/consent/auth-7/timeline").status_code == 200
     finally:
         app.dependency_overrides.pop(require_user, None)
 
-    assert client.get("/api/consent/auth-7").status_code == 200
-    assert client.get("/api/consent/auth-7/timeline").status_code == 200
+    # Unauthenticated reads must be rejected.
+    assert client.get("/api/consent/auth-7").status_code == 401
+    assert client.get("/api/consent/auth-7/timeline").status_code == 401
 
 
 def test_authorize_decision_endpoint_does_not_require_auth():
+    """POST /authorize is a policy check (can system X process data for subject Y?)
+    and must be queryable without auth — it returns BLOCK when no consent exists."""
     r = client.post("/api/consent/auth-8/authorize", json={
         "action_name": "x", "purpose": "y", "data_categories": [],
     })

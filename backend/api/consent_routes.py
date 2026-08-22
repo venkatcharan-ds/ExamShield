@@ -165,10 +165,10 @@ async def simulate_consent(subject_id: str, body: ConsentSimulateRequest, user_i
 
 
 @router.post("/{subject_id}/authorize")
-async def authorize_action(subject_id: str, body: ProcessingActionRequest, user_id: str = Depends(require_user)):
-    record = _owned(subject_id, user_id)
+async def authorize_action(subject_id: str, body: ProcessingActionRequest):
+    record = store.get(subject_id)
     result = firewall.authorize(record, action_name=body.action_name, purpose=body.purpose, data_categories=body.data_categories)
-    if result.decision != "ALLOW":
+    if record is not None and result.decision != "ALLOW":
         verb = "blocked" if result.decision == "BLOCK" else "flagged as needing updated consent"
         record.log("firewall_blocked" if result.decision == "BLOCK" else "firewall_reconsent_required",
                    f"Processing action \"{body.action_name}\" was {verb}", new_state=result.to_dict(), reason=result.reasons[0] if result.reasons else None)

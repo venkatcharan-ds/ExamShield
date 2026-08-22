@@ -1,30 +1,31 @@
 'use client'
 
-import { useRef } from 'react'
-import { motion, useInView } from 'framer-motion'
+import { useRef, useState, useEffect } from 'react'
+import { motion, useInView, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import {
   Shield, EyeOff, Brain, Activity, ChevronRight,
   Keyboard, MousePointer, LayoutGrid, Zap,
-  XCircle, CheckCircle2, ShieldCheck,
+  XCircle, CheckCircle2, ShieldCheck, Lock,
+  Cpu, Terminal, ArrowRight, Sparkles, Radio,
 } from 'lucide-react'
 
 /* ─── Easing curves ──────────────────────────────────────────────────────── */
 const EASE = [0.22, 1, 0.36, 1] as const
 
 const rise = (delay = 0) => ({
-  initial: { opacity: 0, y: 18 },
+  initial: { opacity: 0, y: 22 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.55, ease: EASE, delay },
+  transition: { duration: 0.65, ease: EASE, delay },
 })
 
 const fade = (delay = 0) => ({
   initial: { opacity: 0 },
   animate: { opacity: 1 },
-  transition: { duration: 0.45, delay },
+  transition: { duration: 0.5, delay },
 })
 
-/* ─── Scroll-triggered wrapper ───────────────────────────────────────────── */
+/* ─── Scroll-triggered reveal wrapper ────────────────────────────────────── */
 function Reveal({
   children,
   className,
@@ -40,423 +41,504 @@ function Reveal({
     <motion.div
       ref={ref}
       className={className}
-      initial={{ opacity: 0, y: 22 }}
+      initial={{ opacity: 0, y: 24 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.55, ease: EASE, delay }}
+      transition={{ duration: 0.6, ease: EASE, delay }}
     >
       {children}
     </motion.div>
   )
 }
 
-/* ─── Simulated live event log ───────────────────────────────────────────── */
-const EVENTS = [
-  { t: '14:32:05', msg: 'Session 0042 started — monitoring active', type: 'ok' },
-  { t: '14:35:17', msg: 'Tab switch detected — risk 35', type: 'warn' },
-  { t: '14:35:29', msg: 'Paste event — answer block inserted — risk 76', type: 'alert' },
-  { t: '14:35:31', msg: 'Risk level escalated to HIGH — admin notified', type: 'alert' },
-  { t: '14:38:02', msg: '148 candidates — 147 clear — 1 flagged', type: 'ok' },
+/* ─── Simulated live event stream ────────────────────────────────────────── */
+const LIVE_EVENTS = [
+  { t: '14:32:05', msg: 'Session exam-0042 initiated — telemetry active', type: 'ok' },
+  { t: '14:35:17', msg: 'Focus transition: window blur event detected', type: 'warn' },
+  { t: '14:35:29', msg: 'Paste anomaly: 340 chars inserted in 12ms — risk 76', type: 'alert' },
+  { t: '14:35:31', msg: 'Anomaly flagged in SOC dashboard — admin notified', type: 'alert' },
+  { t: '14:38:02', msg: 'Consent Firewall: Unauthorized camera request BLOCKED', type: 'shield' },
+  { t: '14:40:15', msg: 'Candidate 148 — typing rhythm aligned with baseline', type: 'ok' },
 ]
 
-const EVENT_COLOR = { ok: '#10B981', warn: '#F59E0B', alert: '#EF4444' }
+const EVENT_STYLES = {
+  ok: { color: '#34D399', bg: 'rgba(16,185,129,0.12)', label: 'CLEARED' },
+  warn: { color: '#FBBF24', bg: 'rgba(245,158,11,0.12)', label: 'WARNING' },
+  alert: { color: '#F87171', bg: 'rgba(239,68,68,0.14)', label: 'CRITICAL' },
+  shield: { color: '#818CF8', bg: 'rgba(99,102,241,0.14)', label: 'FIREWALL' },
+}
 
 function LiveLog() {
+  const [activeIdx, setActiveIdx] = useState(3)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveIdx(prev => (prev + 1) % LIVE_EVENTS.length)
+    }, 3200)
+    return () => clearInterval(timer)
+  }, [])
+
   return (
-    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
+    <div
+      className="rounded-2xl overflow-hidden glass-hi"
+      style={{
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 20px 50px rgba(0,0,0,0.60), 0 0 30px rgba(99,102,241,0.12)',
+      }}
+    >
       {/* Title bar */}
-      <div className="flex items-center gap-2 px-4 py-2.5"
-        style={{ background: 'rgba(0,0,0,0.35)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <div className="flex gap-1.5">
-          {['#EF4444','#F59E0B','#10B981'].map(c => (
-            <div key={c} className="w-2.5 h-2.5 rounded-full opacity-50" style={{ background: c }} />
-          ))}
+      <div
+        className="flex items-center justify-between px-4 py-3"
+        style={{ background: 'rgba(5,8,18,0.85)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#EF4444', opacity: 0.8 }} />
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#F59E0B', opacity: 0.8 }} />
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#10B981', opacity: 0.8 }} />
+          </div>
+          <span className="text-[11px] ml-2 font-mono tracking-wider" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            examshield://telemetry-stream
+          </span>
         </div>
-        <span className="text-[11px] ml-1 font-mono" style={{ color: 'rgba(255,255,255,0.22)' }}>
-          examshield — live event stream
-        </span>
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="flex items-center gap-2 px-2.5 py-0.5 rounded-full" style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.25)' }}>
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-low" />
-          <span className="text-[10px] font-medium" style={{ color: '#10B981', opacity: 0.7 }}>LIVE</span>
+          <span className="text-[10px] font-semibold tracking-wider" style={{ color: '#34D399' }}>LIVE SOC FEED</span>
         </div>
       </div>
-      {/* Events */}
-      <div className="p-4 space-y-2" style={{ background: 'rgba(0,0,0,0.20)' }}>
-        {EVENTS.map((e, i) => (
-          <motion.div key={i} className="flex items-start gap-3 font-mono text-[11px]"
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.9 + i * 0.16, duration: 0.4 }}>
-            <span className="tabnum flex-shrink-0" style={{ color: 'rgba(255,255,255,0.22)' }}>{e.t}</span>
-            <span style={{ color: EVENT_COLOR[e.type as keyof typeof EVENT_COLOR] }}>{e.msg}</span>
-          </motion.div>
-        ))}
+
+      {/* Stream events */}
+      <div className="p-4 space-y-2.5" style={{ background: 'rgba(4,6,15,0.60)' }}>
+        {LIVE_EVENTS.slice(0, 5).map((e, i) => {
+          const s = EVENT_STYLES[e.type as keyof typeof EVENT_STYLES]
+          const isHighlight = i === (activeIdx % 5)
+          return (
+            <motion.div
+              key={i}
+              className="flex items-start gap-3 font-mono text-[11.5px] p-2 rounded-xl transition-all duration-300"
+              style={{
+                background: isHighlight ? 'rgba(255,255,255,0.04)' : 'transparent',
+                border: isHighlight ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
+              }}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.6 + i * 0.1, duration: 0.4 }}
+            >
+              <span className="tabnum flex-shrink-0 text-[10.5px]" style={{ color: 'rgba(255,255,255,0.30)' }}>
+                {e.t}
+              </span>
+              <span
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0"
+                style={{ background: s.bg, color: s.color }}
+              >
+                {s.label}
+              </span>
+              <span className="truncate flex-1" style={{ color: 'var(--text-1)' }}>
+                {e.msg}
+              </span>
+            </motion.div>
+          )
+        })}
       </div>
     </div>
   )
 }
 
-/* ─── Page ───────────────────────────────────────────────────────────────── */
-export default function Landing() {
+/* ─── Interactive Background Matrix Grid ─────────────────────────────────── */
+function CyberBackground() {
   return (
-    <div className="min-h-screen overflow-x-hidden" style={{ background: 'var(--surface-0)' }}>
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {/* Ambient Orb 1 */}
+      <div
+        className="float-a absolute -top-24 left-1/4 w-[500px] h-[500px] rounded-full"
+        style={{
+          background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(99,102,241,0.02) 50%, transparent 70%)',
+          filter: 'blur(60px)',
+        }}
+      />
+      {/* Ambient Orb 2 */}
+      <div
+        className="float-b absolute top-96 right-10 w-[450px] h-[450px] rounded-full"
+        style={{
+          background: 'radial-gradient(circle, rgba(16,185,129,0.09) 0%, rgba(16,185,129,0.01) 50%, transparent 70%)',
+          filter: 'blur(64px)',
+        }}
+      />
+      {/* Subtle grid lines */}
+      <div className="cyber-grid absolute inset-0 opacity-40" />
+      {/* Subtle dot overlay */}
+      <div className="dot-grid absolute inset-0 opacity-35" />
+    </div>
+  )
+}
 
-      {/* ── Nav ─────────────────────────────────────────────────────────── */}
+export default function LandingPage() {
+  return (
+    <div className="min-h-screen relative" style={{ background: 'var(--surface-0)' }}>
+
+      {/* ── Navigation ────────────────────────────────────────────────────── */}
       <nav className="nav-blur fixed top-0 inset-x-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105"
               style={{
-                background: 'var(--brand)',
-                boxShadow: '0 0 14px rgba(99,102,241,0.40)',
-              }}>
-              <Shield className="w-4 h-4 text-white" />
+                background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+                boxShadow: '0 0 20px rgba(99,102,241,0.45)',
+              }}
+            >
+              <Shield className="w-4.5 h-4.5 text-white" />
             </div>
-            <span className="font-semibold tracking-tight" style={{ color: 'var(--text-0)' }}>
-              ExamShield
-            </span>
+            <div className="flex flex-col">
+              <span className="font-bold text-sm tracking-tight" style={{ color: 'var(--text-0)' }}>
+                ExamShield
+              </span>
+              <span className="text-[10px] uppercase font-mono tracking-widest" style={{ color: '#818CF8' }}>
+                AI Examination Integrity
+              </span>
+            </div>
           </Link>
 
-          <div className="hidden sm:flex items-center">
-            {([
-              ['/','Home'],
-              ['/exam','Student Exam'],
-              ['/dashboard','Dashboard'],
-            ] as [string,string][]).map(([href, label]) => (
-              <Link key={href} href={href}
-                className="px-3 py-1.5 text-sm rounded-lg transition-colors duration-150"
+          <div className="hidden md:flex items-center gap-1">
+            {[
+              ['/portal', 'Student Portal'],
+              ['/exam', 'Examination'],
+              ['/dashboard', 'SOC Dashboard'],
+              ['/dashboard/admin', 'Admin Console'],
+            ].map(([href, label]) => (
+              <Link
+                key={href}
+                href={href}
+                className="px-3.5 py-1.5 text-xs font-medium rounded-lg transition-colors duration-150"
                 style={{ color: 'var(--text-2)' }}
                 onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-0)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-2)')}>
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-2)')}
+              >
                 {label}
               </Link>
             ))}
           </div>
 
-          <Link href="/dashboard"
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white rounded-xl
-                       transition-all duration-200 active:scale-[0.96]"
-            style={{
-              background: 'var(--brand)',
-              boxShadow: '0 0 18px rgba(99,102,241,0.32)',
-            }}>
-            Open Dashboard
-            <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      </nav>
-
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section className="mesh-hero relative pt-36 pb-24 px-6 overflow-hidden">
-        {/* Ambient orbs */}
-        <div className="float-a absolute top-12 left-1/4 w-96 h-96 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.13) 0%, transparent 70%)', filter: 'blur(56px)' }} />
-        <div className="float-b absolute bottom-0 right-1/4 w-72 h-72 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.07) 0%, transparent 70%)', filter: 'blur(48px)' }} />
-
-        <div className="relative z-10 max-w-4xl mx-auto text-center">
-          {/* Badge */}
-          <motion.div {...fade(0.1)}
-            className="inline-flex items-center gap-2 mb-8 px-3.5 py-1.5 rounded-full text-xs font-medium"
-            style={{
-              color: '#A5B4FC',
-              background: 'rgba(99,102,241,0.10)',
-              border: '1px solid rgba(99,102,241,0.22)',
-            }}>
-            <Zap className="w-3 h-3" />
-            FAR AWAY 2026 · Examinations Track · India
-          </motion.div>
-
-          {/* Headline — two lines, tightly tracked */}
-          <motion.h1 {...rise(0.16)}
-            className="font-bold tracking-tight leading-[1.06] mb-6"
-            style={{
-              fontSize: 'clamp(2.2rem,5.5vw,3.8rem)',
-              color: 'var(--text-0)',
-            }}>
-            Exam integrity
-            <br />
-            <span style={{
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              backgroundImage: 'linear-gradient(128deg, #818CF8 0%, #6366F1 38%, #10B981 100%)',
-            }}>
-              without surveillance
-            </span>
-          </motion.h1>
-
-          {/* Subhead — the product line */}
-          <motion.p {...rise(0.24)}
-            className="text-lg mb-3 max-w-xl mx-auto leading-relaxed"
-            style={{ color: 'var(--text-2)' }}>
-            No camera. No screen recording. No face recognition.
-          </motion.p>
-          <motion.p {...rise(0.30)}
-            className="text-[15px] mb-12 max-w-2xl mx-auto leading-relaxed"
-            style={{ color: 'var(--text-1)', opacity: 0.75 }}>
-            ExamShield uses keystroke dynamics, mouse patterns, and focus signals
-            to detect cheating — protecting student privacy completely.
-          </motion.p>
-
-          {/* CTAs */}
-          <motion.div {...rise(0.38)}
-            className="flex flex-col sm:flex-row gap-3 justify-center mb-16">
-            <Link href="/exam"
-              className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-medium
-                         text-white rounded-xl transition-all duration-200 active:scale-[0.97]"
-              style={{
-                background: 'var(--brand)',
-                boxShadow: '0 0 22px rgba(99,102,241,0.38)',
-              }}>
-              Take the Demo Exam
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-            <Link href="/dashboard"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-medium
-                         rounded-xl transition-all duration-200"
+          <div className="flex items-center gap-3">
+            <Link
+              href="/sign-in"
+              className="px-3.5 py-2 text-xs font-medium rounded-xl transition-all duration-150"
               style={{
                 color: 'var(--text-1)',
                 border: '1px solid var(--border-1)',
-              }}>
-              <Activity className="w-4 h-4" />
-              Live Admin Dashboard
+                background: 'rgba(255,255,255,0.02)',
+              }}
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/exam"
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white rounded-xl transition-all duration-200 active:scale-[0.97]"
+              style={{
+                background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+                boxShadow: '0 0 20px rgba(99,102,241,0.35)',
+              }}
+            >
+              Start Exam
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* ── Hero Section ──────────────────────────────────────────────────── */}
+      <section className="relative pt-36 pb-24 px-6 overflow-hidden">
+        <CyberBackground />
+
+        <div className="relative z-10 max-w-5xl mx-auto text-center">
+          {/* Track Badge */}
+          <motion.div
+            {...fade(0.1)}
+            className="inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full text-xs font-medium"
+            style={{
+              color: '#A5B4FC',
+              background: 'rgba(99,102,241,0.08)',
+              border: '1px solid rgba(99,102,241,0.25)',
+              boxShadow: '0 0 20px rgba(99,102,241,0.12)',
+            }}
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>FAR AWAY 2026 · AI Examination Track · India</span>
+          </motion.div>
+
+          {/* Cinematic Headline */}
+          <motion.h1
+            {...rise(0.18)}
+            className="font-extrabold tracking-tight leading-[1.08] mb-6"
+            style={{
+              fontSize: 'clamp(2.5rem, 6vw, 4.4rem)',
+              color: 'var(--text-0)',
+            }}
+          >
+            Privacy-First AI
+            <br />
+            <span
+              style={{
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                backgroundImage: 'linear-gradient(135deg, #A5B4FC 0%, #6366F1 45%, #34D399 100%)',
+              }}
+            >
+              Exam Integrity
+            </span>
+          </motion.h1>
+
+          {/* Supporting Statement */}
+          <motion.p
+            {...rise(0.26)}
+            className="text-lg md:text-xl font-medium mb-3 max-w-2xl mx-auto leading-relaxed"
+            style={{ color: '#E0E7FF' }}
+          >
+            No cameras. No screen recording. No biometric surveillance.
+          </motion.p>
+          <motion.p
+            {...rise(0.32)}
+            className="text-sm md:text-base max-w-2xl mx-auto leading-relaxed mb-10"
+            style={{ color: 'var(--text-2)' }}
+          >
+            ExamShield replaces invasive spyware with real-time keystroke dynamics, mouse entropy,
+            and focus signals evaluated by an Isolation Forest AI anomaly engine.
+          </motion.p>
+
+          {/* Action CTAs */}
+          <motion.div
+            {...rise(0.40)}
+            className="flex flex-col sm:flex-row gap-3.5 justify-center mb-16"
+          >
+            <Link
+              href="/exam"
+              className="group inline-flex items-center justify-center gap-2 px-7 py-4 text-sm font-semibold text-white rounded-xl transition-all duration-200 active:scale-[0.97]"
+              style={{
+                background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+                boxShadow: '0 0 30px rgba(99,102,241,0.45)',
+              }}
+            >
+              Start Examination
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center justify-center gap-2 px-7 py-4 text-sm font-semibold rounded-xl transition-all duration-200"
+              style={{
+                color: 'var(--text-0)',
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid var(--border-2)',
+                backdropFilter: 'blur(16px)',
+              }}
+            >
+              <Activity className="w-4 h-4 text-emerald-400" />
+              Live SOC Dashboard
             </Link>
           </motion.div>
 
-          {/* Live log widget */}
-          <motion.div {...rise(0.48)} className="max-w-lg mx-auto">
+          {/* Live Telemetry Visualizer */}
+          <motion.div {...rise(0.48)} className="max-w-xl mx-auto">
             <LiveLog />
           </motion.div>
         </div>
 
-        {/* Stats strip */}
-        <motion.div {...rise(0.60)}
-          className="relative z-10 max-w-xl mx-auto mt-14 grid grid-cols-3 rounded-2xl overflow-hidden"
-          style={{ border: '1px solid var(--border-1)', background: 'rgba(255,255,255,0.025)' }}>
+        {/* Hero Feature Indicators */}
+        <motion.div
+          {...rise(0.58)}
+          className="relative z-10 max-w-4xl mx-auto mt-14 grid grid-cols-2 md:grid-cols-4 gap-3"
+        >
           {[
-            { v: '50M+', l: 'Students affected yearly' },
-            { v: '6',    l: 'Paper leaks — India 2024' },
-            { v: '0',    l: 'Cameras required' },
-          ].map((s, i) => (
-            <div key={i}
-              className="py-6 text-center"
-              style={{
-                borderRight: i < 2 ? '1px solid var(--border-0)' : 'none',
-              }}>
-              <div className="text-2xl font-bold mb-0.5 tabnum" style={{ color: 'var(--text-0)' }}>{s.v}</div>
-              <div className="text-[11px]" style={{ color: 'var(--text-3)' }}>{s.l}</div>
+            { label: 'Bandwidth Footprint', val: '< 10 KB/s', sub: 'Runs on 2G connections', color: '#6EE7B7' },
+            { label: 'Camera Requirement', val: '0 Cameras', sub: 'Complete student privacy', color: '#A5B4FC' },
+            { label: 'AI Risk Engine', val: 'Real-time', sub: 'Isolation Forest anomaly model', color: '#FCD34D' },
+            { label: 'Consent Firewall', val: 'Active', sub: 'Strict boundary enforcement', color: '#93C5FD' },
+          ].map((item, i) => (
+            <div
+              key={i}
+              className="p-4 rounded-2xl text-center glass-card"
+            >
+              <div className="text-[10.5px] uppercase font-mono tracking-wider mb-1" style={{ color: 'var(--text-3)' }}>
+                {item.label}
+              </div>
+              <div className="text-xl font-bold tabnum mb-0.5" style={{ color: item.color }}>
+                {item.val}
+              </div>
+              <div className="text-[11px]" style={{ color: 'var(--text-2)' }}>
+                {item.sub}
+              </div>
             </div>
           ))}
         </motion.div>
       </section>
 
-      {/* ── Problem ──────────────────────────────────────────────────────── */}
-      <section className="py-28 px-6" style={{ borderTop: '1px solid var(--border-0)' }}>
-        <div className="max-w-5xl mx-auto">
-          <Reveal className="text-center mb-14">
-            <div className="label mb-3">The problem</div>
-            <h2 className="text-3xl font-bold tracking-tight mb-4" style={{ color: 'var(--text-0)' }}>
-              Surveillance is not integrity
+      {/* ── Problem vs Solution Comparison ─────────────────────────────────── */}
+      <section className="py-24 px-6 relative" style={{ borderTop: '1px solid var(--border-0)' }}>
+        <div className="max-w-6xl mx-auto">
+          <Reveal className="text-center mb-16">
+            <div className="label mb-3">The Paradigm Shift</div>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ color: 'var(--text-0)' }}>
+              Surveillance Is Not Integrity
             </h2>
-            <p className="text-[15px] max-w-md mx-auto" style={{ color: 'var(--text-2)' }}>
-              Every existing solution forces privacy violations on students — especially
-              those in Tier 2/3 cities with limited bandwidth and no quality webcam.
+            <p className="text-sm md:text-base max-w-xl mx-auto" style={{ color: 'var(--text-2)' }}>
+              Traditional proctoring creates severe privacy liabilities, discriminates against candidates with poor hardware or lighting, and fails on slow broadband.
             </p>
           </Reveal>
 
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 gap-6 items-stretch">
+            {/* Traditional Proctoring */}
+            <Reveal delay={0.08}>
+              <div
+                className="h-full rounded-2xl p-7 flex flex-col justify-between"
+                style={{
+                  background: 'rgba(239,68,68,0.02)',
+                  border: '1px solid rgba(239,68,68,0.18)',
+                }}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <span className="text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full" style={{ background: 'rgba(239,68,68,0.12)', color: '#FCA5A5' }}>
+                      Status Quo
+                    </span>
+                    <span className="text-xs font-mono" style={{ color: 'var(--text-3)' }}>Traditional Surveillance</span>
+                  </div>
+
+                  <h3 className="text-lg font-semibold mb-4" style={{ color: '#FCA5A5' }}>
+                    Invasive & Hardware-Dependent
+                  </h3>
+
+                  <ul className="space-y-3.5 text-sm" style={{ color: 'var(--text-1)' }}>
+                    {[
+                      'Continuous webcam observation of student home environments',
+                      'Full screen recording creating GDPR & student data privacy risks',
+                      'Requires minimum 5–10 Mbps bandwidth; fails on Tier 2/3 connections',
+                      'High false positive rate from looking away, natural anxiety, or low light',
+                      'Mandatory expensive webcams and microphones',
+                    ].map((txt, idx) => (
+                      <li key={idx} className="flex items-start gap-3">
+                        <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-400" />
+                        <span>{txt}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="mt-8 pt-4 border-t border-red-500/10 text-xs" style={{ color: 'rgba(252,165,165,0.65)' }}>
+                  Excludes over 60% of Indian candidates lacking dedicated webcams or fiber connections.
+                </div>
+              </div>
+            </Reveal>
+
+            {/* ExamShield */}
+            <Reveal delay={0.16}>
+              <div
+                className="h-full rounded-2xl p-7 flex flex-col justify-between"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(99,102,241,0.06) 0%, rgba(16,185,129,0.04) 100%)',
+                  border: '1px solid rgba(99,102,241,0.30)',
+                  boxShadow: '0 0 40px rgba(99,102,241,0.10)',
+                }}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <span className="text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full" style={{ background: 'rgba(16,185,129,0.14)', color: '#6EE7B7', border: '1px solid rgba(16,185,129,0.30)' }}>
+                      ExamShield Architecture
+                    </span>
+                    <span className="text-xs font-mono" style={{ color: '#818CF8' }}>Privacy-First Behavioral AI</span>
+                  </div>
+
+                  <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-0)' }}>
+                    Behavioral Signals Without Surveillance
+                  </h3>
+
+                  <ul className="space-y-3.5 text-sm" style={{ color: 'var(--text-1)' }}>
+                    {[
+                      'Analyzes typing rhythm, key intervals, and mouse motion metadata',
+                      'Zero webcam, microphone, or screen recording required',
+                      'Lightweight WebSocket telemetry operates smoothly on 2G (<10 KB/s)',
+                      'Pre-trained Isolation Forest anomaly model detects robotic text injection & focus loss',
+                      'Runs in any standard modern web browser with zero client software installation',
+                    ].map((txt, idx) => (
+                      <li key={idx} className="flex items-start gap-3">
+                        <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-400" />
+                        <span>{txt}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="mt-8 pt-4 border-t border-emerald-500/10 text-xs" style={{ color: 'rgba(110,231,183,0.75)' }}>
+                  Deployable instantly to 1,000,000+ simultaneous candidates across India.
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 4-Stage AI Pipeline ────────────────────────────────────────────── */}
+      <section className="py-24 px-6 relative" style={{ borderTop: '1px solid var(--border-0)' }}>
+        <div className="max-w-6xl mx-auto">
+          <Reveal className="text-center mb-16">
+            <div className="label mb-3">AI Architecture</div>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ color: 'var(--text-0)' }}>
+              How Behavioral Detection Works
+            </h2>
+            <p className="text-sm md:text-base max-w-xl mx-auto" style={{ color: 'var(--text-2)' }}>
+              ExamShield captures metadata on how you interact with the exam — never reading your text content or capturing video.
+            </p>
+          </Reveal>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               {
-                icon: '📷',
-                title: 'Camera surveillance',
-                desc: 'Students recorded via webcam throughout. 60% of Indian candidates lack reliable cameras or stable internet.',
-                borderColor: 'rgba(239,68,68,0.15)',
+                step: '01',
+                title: 'Interaction Telemetry',
+                desc: 'Captures keystroke intervals, mouse velocity entropy, idle pauses, and tab focus blur events in 3-second windows.',
+                icon: Keyboard,
+                color: '#818CF8',
               },
               {
-                icon: '🖥',
-                title: 'Screen recording',
-                desc: 'Continuous capture creates massive privacy liabilities and fails on low-bandwidth connections.',
-                borderColor: 'rgba(245,158,11,0.12)',
+                step: '02',
+                title: 'Consent Firewall',
+                desc: 'ConsentPulse verifies telemetry against the candidate consent boundary, blocking unauthorized collection.',
+                icon: ShieldCheck,
+                color: '#34D399',
               },
               {
-                icon: '⚠️',
-                title: 'False positives',
-                desc: 'Looking away is flagged as cheating. Anxious students and those with disabilities are penalised unfairly.',
-                borderColor: 'rgba(245,158,11,0.12)',
+                step: '03',
+                title: 'Isolation Forest AI',
+                desc: 'Anomaly detection model pre-trained on 600+ behavioral patterns identifies copy-paste spikes and abnormal typing.',
+                icon: Brain,
+                color: '#FBBF24',
               },
-            ].map((c, i) => (
+              {
+                step: '04',
+                title: 'Real-time SOC Alert',
+                desc: 'Composite risk score (0–100) streams to invigilator dashboard with automated timeline flags and forensic review.',
+                icon: Activity,
+                color: '#F87171',
+              },
+            ].map((card, i) => (
               <Reveal key={i} delay={i * 0.08}>
-                <div className="h-full p-6 rounded-2xl transition-all duration-300"
-                  style={{
-                    background: 'var(--surface-1)',
-                    border: `1px solid ${c.borderColor}`,
-                  }}>
-                  <div className="text-2xl mb-4">{c.icon}</div>
-                  <h3 className="font-semibold mb-2 text-[15px]" style={{ color: 'var(--text-0)' }}>{c.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>{c.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Solution flow ─────────────────────────────────────────────────── */}
-      <section className="py-28 px-6" style={{
-        borderTop: '1px solid var(--border-0)',
-        background: 'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(99,102,241,0.05) 0%, transparent 70%)',
-      }}>
-        <div className="max-w-5xl mx-auto">
-          <Reveal className="text-center mb-14">
-            <div className="label mb-3">How it works</div>
-            <h2 className="text-3xl font-bold tracking-tight mb-4" style={{ color: 'var(--text-0)' }}>
-              Behaviour, not appearance
-            </h2>
-            <p className="text-[15px] max-w-lg mx-auto" style={{ color: 'var(--text-2)' }}>
-              ExamShield listens to <em>how</em> you type — never <em>what</em> you type.
-              Timing metadata only. No content. No camera.
-            </p>
-          </Reveal>
-
-          <div className="flex flex-col md:flex-row items-stretch gap-3">
-            {[
-              { Icon: Keyboard,     label: 'Student activity',  sub: 'Keystroke timing · mouse movement · focus events', c: '#6366F1' },
-              { Icon: Brain,        label: 'Behavioral AI',     sub: 'Isolation Forest anomaly detection model',         c: '#818CF8' },
-              { Icon: Activity,     label: 'Risk analysis',     sub: 'Score 0–100 updated every 3 seconds',             c: '#F59E0B' },
-              { Icon: Shield,       label: 'Admin alert',       sub: 'Live flag · event log · instant notification',    c: '#10B981' },
-            ].map(({ Icon, label, sub, c }, i) => (
-              <Reveal key={i} delay={i * 0.07} className="flex-1">
-                <div className="relative h-full p-5 rounded-2xl text-center"
-                  style={{ background: 'var(--surface-1)', border: '1px solid var(--border-0)' }}>
-                  <div className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center"
-                    style={{ background: `${c}18`, border: `1px solid ${c}28` }}>
-                    <Icon className="w-5 h-5" style={{ color: c }} />
-                  </div>
-                  <p className="font-medium text-sm mb-1" style={{ color: 'var(--text-0)' }}>{label}</p>
-                  <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-3)' }}>{sub}</p>
-                  {/* connector */}
-                  {i < 3 && (
-                    <div className="hidden md:flex absolute -right-2 top-1/2 -translate-y-1/2 z-10
-                                    w-4 items-center justify-center">
-                      <ChevronRight className="w-3 h-3" style={{ color: 'var(--text-3)' }} />
-                    </div>
-                  )}
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── ConsentPulse ─────────────────────────────────────────────────── */}
-      <section className="py-28 px-6" style={{
-        borderTop: '1px solid var(--border-0)',
-        background: 'radial-gradient(ellipse 70% 45% at 50% 0%, rgba(99,102,241,0.06) 0%, transparent 70%)',
-      }}>
-        <div className="max-w-4xl mx-auto text-center">
-          <Reveal>
-            <div className="inline-flex items-center gap-2 mb-5 px-3.5 py-1.5 rounded-full text-xs font-medium"
-              style={{ color: '#A5B4FC', background: 'rgba(99,102,241,0.10)', border: '1px solid rgba(99,102,241,0.22)' }}>
-              <ShieldCheck className="w-3 h-3" />
-              Beyond behavior monitoring
-            </div>
-            <h2 className="font-bold tracking-tight mb-3" style={{ fontSize: 'clamp(1.9rem,4vw,2.6rem)' }}>
-              <span style={{
-                backgroundImage: 'linear-gradient(128deg, #818CF8 0%, #6366F1 55%, #10B981 100%)',
-                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-              }}>ConsentPulse</span>
-            </h2>
-            <p className="text-[13px] font-mono uppercase mb-6" style={{ color: 'var(--text-3)', letterSpacing: '0.12em' }}>
-              Consent enforcement for AI monitoring
-            </p>
-            <p className="text-[15px] max-w-xl mx-auto leading-relaxed mb-14" style={{ color: 'var(--text-2)' }}>
-              ExamShield detects suspicious candidate behavior.<br className="hidden sm:block" />{' '}
-              <span style={{ color: 'var(--text-1)' }}>
-                ConsentPulse ensures the monitoring system itself never silently crosses the candidate&rsquo;s consent boundary.
-              </span>
-            </p>
-          </Reveal>
-
-          {/* Flow diagram */}
-          <Reveal delay={0.1}>
-            <div className="flex flex-wrap items-center justify-center gap-2.5">
-              {[
-                { label: 'User Consent' },
-                { label: 'ConsentPulse', brand: true },
-                { label: 'Drift Detection' },
-                { label: 'Consent Firewall' },
-              ].map((s, i, arr) => (
-                <span key={s.label} className="contents">
-                  <span className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium"
-                    style={s.brand
-                      ? { background: 'rgba(99,102,241,0.14)', border: '1px solid rgba(99,102,241,0.32)', color: '#A5B4FC' }
-                      : { background: 'var(--surface-1)', border: '1px solid var(--border-1)', color: 'var(--text-1)' }}>
-                    {s.label}
-                  </span>
-                  {i < arr.length - 1 && <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--text-3)' }} />}
-                </span>
-              ))}
-              <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--text-3)' }} />
-              <span className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl" style={{ background: 'var(--surface-1)', border: '1px solid var(--border-1)' }}>
-                <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold" style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.28)', color: '#34D399' }}>ALLOW</span>
-                <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.28)', color: '#FBBF24' }}>BLOCK</span>
-                <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold" style={{ background: 'rgba(129,140,248,0.12)', border: '1px solid rgba(129,140,248,0.28)', color: '#A5B4FC' }}>RE-CONSENT</span>
-              </span>
-              <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--text-3)' }} />
-              <span className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium" style={{ background: 'var(--surface-1)', border: '1px solid var(--border-1)', color: 'var(--text-1)' }}>
-                ExamShield AI
-              </span>
-            </div>
-          </Reveal>
-
-          <Reveal delay={0.2}>
-            <Link href="/dashboard"
-              className="inline-flex items-center gap-1.5 mt-12 px-5 py-2.5 text-sm font-medium rounded-xl transition-all duration-200"
-              style={{ color: 'var(--text-1)', border: '1px solid var(--border-1)' }}>
-              See consent enforcement live
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ── Features ─────────────────────────────────────────────────────── */}
-      <section className="py-28 px-6" style={{ borderTop: '1px solid var(--border-0)' }}>
-        <div className="max-w-5xl mx-auto">
-          <Reveal className="text-center mb-14">
-            <div className="label mb-3">Capabilities</div>
-            <h2 className="text-3xl font-bold tracking-tight" style={{ color: 'var(--text-0)' }}>
-              Built for Indian scale
-            </h2>
-          </Reveal>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            {[
-              { Icon: EyeOff,       title: 'Privacy-first by design', desc: 'Zero camera, zero screen recording. Keystroke timing metadata only — GDPR-compliant and built for India\'s data protection standards.' },
-              { Icon: Brain,        title: 'Real ML, not rule-based',  desc: 'Isolation Forest anomaly detection, pre-trained on 600 diverse behavioral samples. Handles slow thinkers, fast typists, every style.' },
-              { Icon: Activity,     title: 'Live risk scoring',        desc: 'Score updates every 3 seconds from a live WebSocket feed. The gauge moves the moment behaviour changes.' },
-              { Icon: MousePointer, title: 'Eight behavioral signals', desc: 'Keystroke dynamics, mouse entropy, idle periods, tab switches, focus loss, copy/paste — fused into one AI score.' },
-              { Icon: LayoutGrid,   title: 'Enterprise dashboard',     desc: 'Invigilators see every candidate simultaneously. Live gauge, event timeline, behavioral charts, and instant alerts.' },
-              { Icon: Zap,          title: 'Works on 2G',              desc: 'No hardware, no install. Runs in any modern browser. Built for Tier 2 and Tier 3 India from day one.' },
-            ].map(({ Icon, title, desc }, i) => (
-              <Reveal key={i} delay={(i % 2) * 0.06}>
-                <div className="flex gap-4 p-6 rounded-2xl transition-all duration-250 group"
-                  style={{ background: 'var(--surface-1)', border: '1px solid var(--border-0)' }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = 'var(--border-1)'
-                    e.currentTarget.style.background = 'var(--surface-2)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = 'var(--border-0)'
-                    e.currentTarget.style.background = 'var(--surface-1)'
-                  }}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{ background: 'rgba(99,102,241,0.10)', border: '1px solid rgba(99,102,241,0.18)' }}>
-                    <Icon className="w-[18px] h-[18px]" style={{ color: '#818CF8' }} />
-                  </div>
+                <div className="h-full p-6 rounded-2xl glass-card flex flex-col justify-between">
                   <div>
-                    <h3 className="font-medium mb-1.5 text-[15px]" style={{ color: 'var(--text-0)' }}>{title}</h3>
-                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>{desc}</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        style={{ background: `${card.color}15`, border: `1px solid ${card.color}30` }}
+                      >
+                        <card.icon className="w-5 h-5" style={{ color: card.color }} />
+                      </div>
+                      <span className="font-mono text-xs font-bold" style={{ color: 'var(--text-3)' }}>
+                        {card.step}
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-base mb-2" style={{ color: 'var(--text-0)' }}>
+                      {card.title}
+                    </h3>
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--text-2)' }}>
+                      {card.desc}
+                    </p>
                   </div>
                 </div>
               </Reveal>
@@ -465,278 +547,122 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Comparison ───────────────────────────────────────────────────── */}
-      <section className="py-28 px-6 relative overflow-hidden"
+      {/* ── ConsentPulse Section ───────────────────────────────────────────── */}
+      <section
+        className="py-24 px-6 relative overflow-hidden"
         style={{
           borderTop: '1px solid var(--border-0)',
-          background: 'radial-gradient(ellipse 70% 50% at 50% 100%, rgba(99,102,241,0.06) 0%, transparent 70%)',
-        }}>
-
-        <div className="max-w-5xl mx-auto">
-
-          {/* Header */}
-          <Reveal className="text-center mb-14">
-            <div className="label mb-3">Why ExamShield</div>
-            <h2 className="text-3xl font-bold tracking-tight mb-4" style={{ color: 'var(--text-0)' }}>
-              A fundamentally different approach
+          background: 'radial-gradient(ellipse 70% 45% at 50% 50%, rgba(99,102,241,0.08) 0%, transparent 70%)',
+        }}
+      >
+        <div className="max-w-4xl mx-auto text-center">
+          <Reveal>
+            <div
+              className="inline-flex items-center gap-2 mb-4 px-3.5 py-1.5 rounded-full text-xs font-semibold"
+              style={{ color: '#A5B4FC', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)' }}
+            >
+              <Lock className="w-3.5 h-3.5" />
+              Dynamic Governance
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ color: 'var(--text-0)' }}>
+              ConsentPulse™ Privacy Firewall
             </h2>
-            <p className="text-[15px] max-w-lg mx-auto leading-relaxed" style={{ color: 'var(--text-2)' }}>
-              Every existing proctoring tool treats surveillance as integrity.
-              ExamShield proves they are not the same thing.
+            <p className="text-sm md:text-base max-w-xl mx-auto leading-relaxed mb-10" style={{ color: 'var(--text-2)' }}>
+              ExamShield monitors exam dishonesty, but <span style={{ color: 'var(--text-0)' }}>ConsentPulse</span> ensures the AI itself never exceeds the permissions agreed to by the candidate.
             </p>
           </Reveal>
 
-          {/* Comparison grid */}
-          <div className="relative grid md:grid-cols-2 gap-4 items-start">
-
-            {/* Traditional card */}
-            <Reveal delay={0.05}>
-              <div className="rounded-2xl overflow-hidden h-full"
-                style={{
-                  background: 'rgba(239,68,68,0.03)',
-                  border: '1px solid rgba(239,68,68,0.14)',
-                }}>
-
-                {/* Card header */}
-                <div className="px-6 py-5 flex items-center justify-between"
-                  style={{ borderBottom: '1px solid rgba(239,68,68,0.10)' }}>
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-widest mb-1"
-                      style={{ color: 'rgba(239,68,68,0.55)' }}>
-                      Traditional
-                    </div>
-                    <div className="text-base font-semibold" style={{ color: 'var(--text-1)' }}>
-                      Camera-Based Proctoring
-                    </div>
+          <Reveal delay={0.15}>
+            <div className="p-6 rounded-2xl glass-hi max-w-2xl mx-auto text-left">
+              <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/5">
+                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-2)' }}>
+                  Enforced Boundary Model
+                </span>
+                <span className="text-xs font-mono text-emerald-400 font-medium">✓ GDPR / DPDP Verified</span>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4 text-xs">
+                <div className="p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/15">
+                  <div className="font-semibold text-emerald-400 mb-1.5 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Authorized Telemetry
                   </div>
-                  <span className="text-[10px] font-medium px-2.5 py-1 rounded-full flex-shrink-0"
-                    style={{
-                      background: 'rgba(239,68,68,0.10)',
-                      border: '1px solid rgba(239,68,68,0.20)',
-                      color: '#FCA5A5',
-                    }}>
-                    Status quo
-                  </span>
+                  <p className="text-zinc-400 leading-relaxed">
+                    Keystroke intervals, mouse dynamics, focus blur counters.
+                  </p>
                 </div>
-
-                {/* Items */}
-                <div className="px-6 py-5 space-y-3">
-                  {[
-                    { label: 'Continuous camera observation',  sub: 'Students recorded throughout the session' },
-                    { label: 'Room surveillance required',     sub: 'Background scanning raises privacy concerns' },
-                    { label: 'High bandwidth dependency',      sub: 'Fails on connections below 5 Mbps' },
-                    { label: 'Privacy risk at every layer',    sub: 'GDPR exposure, data retention liability' },
-                    { label: 'Hardware dependency',            sub: 'Webcam, microphone, and stable power required' },
-                  ].map((item, i) => (
-                    <motion.div
-                      key={item.label}
-                      className="flex items-start gap-3"
-                      initial={{ opacity: 0, x: -10 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true, margin: '-40px' }}
-                      transition={{ duration: 0.38, ease: EASE, delay: 0.1 + i * 0.06 }}
-                    >
-                      <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
-                        style={{ background: 'rgba(239,68,68,0.10)' }}>
-                        <XCircle className="w-3.5 h-3.5" style={{ color: '#F87171' }} />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                          {item.label}
-                        </div>
-                        <div className="text-[11px] mt-0.5 leading-snug" style={{ color: 'var(--text-3)' }}>
-                          {item.sub}
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* Card footer */}
-                <div className="px-6 py-4 mx-5 mb-5 rounded-xl"
-                  style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.10)' }}>
-                  <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(252,165,165,0.65)' }}>
-                    60% of Indian examination candidates lack reliable webcams or stable
-                    broadband — making traditional proctoring exclusionary by design.
+                <div className="p-3.5 rounded-xl bg-red-500/5 border border-red-500/15">
+                  <div className="font-semibold text-red-400 mb-1.5 flex items-center gap-1.5">
+                    <XCircle className="w-3.5 h-3.5" />
+                    Strictly Prohibited
+                  </div>
+                  <p className="text-zinc-400 leading-relaxed">
+                    Webcam access, audio feeds, facial analysis, text keylogging.
                   </p>
                 </div>
               </div>
-            </Reveal>
-
-            {/* VS pill — visible only on md+ */}
-            <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10
-                            w-9 h-9 rounded-full items-center justify-center"
-              style={{
-                background: 'var(--surface-0)',
-                border: '1px solid var(--border-1)',
-                boxShadow: '0 0 24px rgba(0,0,0,0.40)',
-              }}>
-              <span className="text-[10px] font-bold" style={{ color: 'var(--text-3)' }}>VS</span>
-            </div>
-
-            {/* ExamShield card */}
-            <Reveal delay={0.12}>
-              <div className="rounded-2xl overflow-hidden h-full"
-                style={{
-                  background: 'rgba(99,102,241,0.04)',
-                  border: '1px solid rgba(99,102,241,0.22)',
-                  boxShadow: '0 0 40px rgba(99,102,241,0.08)',
-                }}>
-
-                {/* Brand gradient accent line */}
-                <div className="h-0.5 w-full"
-                  style={{ background: 'linear-gradient(90deg, #6366F1 0%, #818CF8 50%, #10B981 100%)' }} />
-
-                {/* Card header */}
-                <div className="px-6 py-5 flex items-center justify-between"
-                  style={{ borderBottom: '1px solid rgba(99,102,241,0.10)' }}>
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-widest mb-1"
-                      style={{ color: 'rgba(129,140,248,0.70)' }}>
-                      ExamShield
-                    </div>
-                    <div className="text-base font-semibold" style={{ color: 'var(--text-0)' }}>
-                      Interaction-Based Assessment
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-medium px-2.5 py-1 rounded-full flex-shrink-0"
-                    style={{
-                      background: 'rgba(16,185,129,0.10)',
-                      border: '1px solid rgba(16,185,129,0.22)',
-                      color: '#6EE7B7',
-                    }}>
-                    Privacy-first
-                  </span>
-                </div>
-
-                {/* Items */}
-                <div className="px-6 py-5 space-y-3">
-                  {[
-                    { label: 'Interaction-based assessment',   sub: 'Keystroke timing and focus signals only — no footage' },
-                    { label: 'No camera required',             sub: 'Zero visual surveillance at any point' },
-                    { label: 'No microphone required',         sub: 'Audio capture is never requested or used' },
-                    { label: 'Runs on 2G bandwidth',           sub: 'Under 10 KB/s — works anywhere in India' },
-                    { label: 'Privacy-first architecture',     sub: 'Timing metadata only, no content ever stored' },
-                  ].map((item, i) => (
-                    <motion.div
-                      key={item.label}
-                      className="flex items-start gap-3"
-                      initial={{ opacity: 0, x: 10 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true, margin: '-40px' }}
-                      transition={{ duration: 0.38, ease: EASE, delay: 0.16 + i * 0.06 }}
-                    >
-                      <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
-                        style={{ background: 'rgba(16,185,129,0.12)' }}>
-                        <CheckCircle2 className="w-3.5 h-3.5" style={{ color: '#34D399' }} />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium" style={{ color: 'var(--text-0)' }}>
-                          {item.label}
-                        </div>
-                        <div className="text-[11px] mt-0.5 leading-snug" style={{ color: 'var(--text-3)' }}>
-                          {item.sub}
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* Card footer */}
-                <div className="px-6 py-4 mx-5 mb-5 rounded-xl"
-                  style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.12)' }}>
-                  <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(110,231,183,0.70)' }}>
-                    Deployable via any modern browser. No installation. No hardware procurement.
-                    Ready for 1,000,000 concurrent candidates on day one.
-                  </p>
-                </div>
-              </div>
-            </Reveal>
-          </div>
-
-          {/* Differentiator strip */}
-          <Reveal delay={0.20} className="mt-6">
-            <div className="grid grid-cols-3 rounded-2xl overflow-hidden"
-              style={{ border: '1px solid var(--border-1)', background: 'rgba(255,255,255,0.018)' }}>
-              {[
-                { value: '0',     unit: 'Cameras',      sub: 'required' },
-                { value: '0',     unit: 'Microphones',  sub: 'required' },
-                { value: '2G',    unit: 'Bandwidth',    sub: 'minimum' },
-              ].map((s, i) => (
-                <div key={s.unit}
-                  className="py-6 text-center"
-                  style={{ borderRight: i < 2 ? '1px solid var(--border-0)' : 'none' }}>
-                  <div className="text-2xl font-bold tabnum mb-0.5"
-                    style={{
-                      background: 'linear-gradient(128deg, #818CF8, #10B981)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text',
-                    }}>
-                    {s.value}
-                  </div>
-                  <div className="text-xs font-semibold" style={{ color: 'var(--text-1)' }}>{s.unit}</div>
-                  <div className="text-[10px]" style={{ color: 'var(--text-3)' }}>{s.sub}</div>
-                </div>
-              ))}
             </div>
           </Reveal>
-
         </div>
       </section>
 
-      {/* ── CTA ──────────────────────────────────────────────────────────── */}
-      <section className="py-28 px-6 relative overflow-hidden"
-        style={{ borderTop: '1px solid var(--border-0)' }}>
-        {/* Dot grid texture */}
-        <div className="dot-grid absolute inset-0 opacity-40 pointer-events-none" />
-        <Reveal className="relative z-10 max-w-2xl mx-auto text-center">
-          <div className="label mb-4">See it in action</div>
-          <h2 className="text-3xl font-bold tracking-tight mb-4" style={{ color: 'var(--text-0)' }}>
-            Open both tabs simultaneously
-          </h2>
-          <p className="text-[15px] mb-10 leading-relaxed" style={{ color: 'var(--text-2)' }}>
-            Launch the student exam and admin dashboard side by side.
-            Type normally — then paste something — and watch the gauge turn red in real time.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/exam"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5
-                         text-sm font-medium text-white rounded-xl transition-all duration-200 active:scale-[0.97]"
-              style={{
-                background: 'var(--brand)',
-                boxShadow: '0 0 22px rgba(99,102,241,0.35)',
-              }}>
-              Student Exam Portal
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-            <Link href="/dashboard"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5
-                         text-sm font-medium rounded-xl transition-all duration-200"
-              style={{ color: 'var(--text-1)', border: '1px solid var(--border-1)' }}>
-              Admin Dashboard
-            </Link>
-          </div>
-        </Reveal>
+      {/* ── Call to Action ─────────────────────────────────────────────────── */}
+      <section className="py-24 px-6 relative" style={{ borderTop: '1px solid var(--border-0)' }}>
+        <div className="max-w-4xl mx-auto text-center">
+          <Reveal>
+            <div className="label mb-4">Live Verification</div>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ color: 'var(--text-0)' }}>
+              Test The System In Real-Time
+            </h2>
+            <p className="text-sm md:text-base max-w-lg mx-auto mb-10" style={{ color: 'var(--text-2)' }}>
+              Open the Candidate Exam in one window and the Admin SOC Dashboard in another. Type normally, then test a paste event to watch the risk telemetry react.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/exam"
+                className="px-7 py-4 text-sm font-semibold text-white rounded-xl transition-all duration-200 active:scale-[0.97]"
+                style={{
+                  background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+                  boxShadow: '0 0 25px rgba(99,102,241,0.40)',
+                }}
+              >
+                Launch Student Exam
+              </Link>
+              <Link
+                href="/dashboard"
+                className="px-7 py-4 text-sm font-semibold rounded-xl transition-all duration-200"
+                style={{
+                  color: 'var(--text-0)',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid var(--border-1)',
+                }}
+              >
+                Open SOC Dashboard
+              </Link>
+            </div>
+          </Reveal>
+        </div>
       </section>
 
-      {/* ── Footer ───────────────────────────────────────────────────────── */}
-      <footer className="py-8 px-6" style={{ borderTop: '1px solid var(--border-0)' }}>
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md flex items-center justify-center"
-              style={{ background: 'var(--brand)' }}>
-              <Shield className="w-3 h-3 text-white" />
+      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+      <footer className="py-10 px-6" style={{ borderTop: '1px solid var(--border-0)' }}>
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--brand)' }}>
+              <Shield className="w-3.5 h-3.5 text-white" />
             </div>
+            <span className="text-xs font-semibold" style={{ color: 'var(--text-0)' }}>
+              ExamShield
+            </span>
             <span className="text-xs" style={{ color: 'var(--text-3)' }}>
-              ExamShield · FAR AWAY 2026 · Built in 24 hours
+              · FAR AWAY 2026 Examination Track
             </span>
           </div>
-          <span className="text-xs" style={{ color: 'var(--text-3)', opacity: 0.7 }}>
-            No camera. No surveillance. Just AI.
-          </span>
+          <div className="text-xs" style={{ color: 'var(--text-3)' }}>
+            Zero Surveillance · 100% Privacy-Preserving AI
+          </div>
         </div>
       </footer>
+
     </div>
   )
 }
