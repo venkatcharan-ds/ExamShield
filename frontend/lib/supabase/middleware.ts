@@ -1,6 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+/**
+ * Refreshes the Supabase session cookie on every request and redirects
+ * unauthenticated visitors to the appropriate sign-in page:
+ *   /dashboard  → /admin/sign-in
+ *   /portal     → /student/sign-in
+ *
+ * /exam and all other routes stay public.
+ */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -20,16 +28,22 @@ export async function updateSession(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-  const path = request.nextUrl.pathname
-  const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/portal')
+  const pathname = request.nextUrl.pathname
 
-  if (isProtectedRoute && !user) {
-    const redirectUrl = new URL('/sign-in', request.url)
-    redirectUrl.searchParams.set('next', path)
-    return NextResponse.redirect(redirectUrl)
+  if (!user) {
+    if (pathname.startsWith('/dashboard')) {
+      const redirectUrl = new URL('/admin/sign-in', request.url)
+      redirectUrl.searchParams.set('next', pathname)
+      return NextResponse.redirect(redirectUrl)
+    }
+    if (pathname.startsWith('/portal')) {
+      const redirectUrl = new URL('/student/sign-in', request.url)
+      redirectUrl.searchParams.set('next', pathname)
+      return NextResponse.redirect(redirectUrl)
+    }
   }
 
-  if (path.startsWith('/dashboard') && user?.app_metadata?.role !== 'admin') {
+  if (pathname.startsWith('/dashboard') && user?.app_metadata?.role !== 'admin') {
     return NextResponse.redirect(new URL('/portal', request.url))
   }
 
