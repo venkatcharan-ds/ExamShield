@@ -375,14 +375,43 @@ function generateBehaviorAnalysis(session: CandidateSession): {
     }
   }
 
-  /* Timeline-derived patterns — deduplicate with feature patterns */
-  const criticalTimelineEvents = timeline.filter(e => e.severity === 'critical')
-  const hasPasteInTimeline     = criticalTimelineEvents.some(e => e.type === 'paste')
-  if (hasPasteInTimeline && (!f || f.paste_count === 0)) {
+  /* Timeline-derived patterns — a session's `features` reflect only the
+     most recent ~3s window (by design, so the live gauge tracks the
+     present). A paste/copy/tab-switch from an earlier window has already
+     scrolled out of `features` by the time a later, calmer window is
+     displayed — but it's still real history, and it's still counted in
+     the Alerts badge and the Event Timeline. This reconciliation makes
+     sure the analysis report can't tell a story that contradicts what
+     the timeline it sits next to is showing. */
+  const nonInfoTimeline = timeline.filter(e => e.severity !== 'info')
+  const timelineSeverity = (type: string): 'critical' | 'warning' | null => {
+    const matches = nonInfoTimeline.filter(e => e.type === type)
+    if (matches.some(e => e.severity === 'critical')) return 'critical'
+    return matches.length > 0 ? 'warning' : null
+  }
+
+  const pasteSev = timelineSeverity('paste')
+  if (pasteSev && (!f || f.paste_count === 0)) {
     patterns.push({
       label: 'Text insertion event detected',
-      detail: 'A paste event was recorded during the session.',
-      severity: 'critical',
+      detail: 'A paste event was recorded earlier in the session.',
+      severity: pasteSev,
+    })
+  }
+  const copySev = timelineSeverity('copy')
+  if (copySev && (!f || f.copy_count === 0)) {
+    patterns.push({
+      label: 'Copy operation detected',
+      detail: 'Content was copied earlier in the session.',
+      severity: copySev,
+    })
+  }
+  const tabSev = timelineSeverity('tab_switch')
+  if (tabSev && (!f || f.tab_switch_count === 0)) {
+    patterns.push({
+      label: 'Exam window change detected',
+      detail: 'The candidate left the exam window earlier in the session.',
+      severity: tabSev,
     })
   }
 
@@ -395,7 +424,11 @@ function generateBehaviorAnalysis(session: CandidateSession): {
     })
   }
 
-  /* Assessment and confidence */
+  /* Assessment and confidence — always a function of what `patterns`
+     actually found, never just the instantaneous score in isolation, so
+     the sentence can never claim "no concerns" while the report right
+     above it lists a critical or warning pattern. */
+  const flagged = patterns.filter(p => p.severity !== 'info')
   let assessment: string
   let confidence: 'High' | 'Medium' | 'Low'
   let status: string
@@ -408,10 +441,15 @@ function generateBehaviorAnalysis(session: CandidateSession): {
     assessment = 'Some behavioral anomalies were detected. A secondary review is recommended before finalising the results.'
     confidence = 'Medium'
     status = 'Requires Review'
-  } else {
+  } else if (flagged.length === 0) {
     assessment = 'No significant integrity concerns were identified. The candidate\'s behavior aligns with expected examination patterns.'
     confidence = 'High'
     status = 'Session Cleared'
+  } else {
+    const summary = flagged.map(p => p.label.toLowerCase()).join(', ')
+    assessment = `${flagged.length} behavioral signal${flagged.length > 1 ? 's were' : ' was'} detected (${summary}), but the frequency and overall behavior remain below the suspicious threshold. No escalation is currently required.`
+    confidence = 'Medium'
+    status = 'Reviewed — Below Threshold'
   }
 
   return { patterns, assessment, confidence, status }

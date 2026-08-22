@@ -9,6 +9,25 @@ from typing import Dict, List, Optional
 import time
 
 
+def _flag_type(flag: str) -> str:
+    """Map a risk-engine flag string to the specific timeline event type
+    it describes (paste/copy/tab_switch), rather than the generic
+    "risk_update". The dashboard's behavior-analysis report reconciles a
+    session's CURRENT (single-window) features against its full timeline
+    history — a paste event that pushed the score up a window ago must
+    still be recognizable in the timeline once the window has passed and
+    current_risk_score has moved on. Without a specific type here, that
+    reconciliation has nothing to match against."""
+    lower = flag.lower()
+    if "paste" in lower:
+        return "paste"
+    if "copy" in lower:
+        return "copy"
+    if "tab switch" in lower:
+        return "tab_switch"
+    return "risk_update"
+
+
 @dataclass
 class SessionState:
     session_id: str
@@ -34,7 +53,7 @@ class SessionState:
             self.timeline.append({
                 "id": f"{now}-{flag[:8]}",
                 "timestamp": now,
-                "type": "risk_update",
+                "type": _flag_type(flag),
                 "description": flag,
                 "severity": severity,
             })
