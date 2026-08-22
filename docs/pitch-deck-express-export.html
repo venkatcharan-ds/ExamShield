@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<meta name="hz:slide-selector" content=".slide">
+<title>ExamShield</title>
+<meta name="hz:canvas-width" content="1920">
+<meta name="hz:canvas-height" content="1080">
+<link rel="stylesheet" href="https://use.typekit.net/que6ugm.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --ground:     #080C18;
+    --surface:    #0D1527;
+    --surface2:   #111E35;
+    --border:     #1A2844;
+    --blue:       #4A9FFF;
+    --blue-dim:   #1E3A5F;
+    --teal:       #00D4AA;
+    --teal-dim:   #003D31;
+    --amber:      #F59E0B;
+    --amber-dim:  #3D2700;
+    --red:        #EF4444;
+    --red-dim:    #3D0F0F;
+    --text:       #F0F4FF;
+    --text-2:     #8BA3C7;
+    --text-3:     #4A6080;
+    --mono:       "source-code-pro", monospace;
+    --sans:       "ibm-plex-sans", sans-serif;
+    --display:    "acumin-pro", sans-serif;
+  }
+
+  body {
+    background: #000;
+    font-family: var(--sans);
+  }
+
+  .slide {
+    width: 1920px;
+    height: 1080px;
+    background: var(--ground);
+    color: var(--text);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+  }
+
+  /* ── Shared decorative elements ── */
+  .slide-num {
+    position: absolute;
+    bottom: 40px;
+    right: 60px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-3);
+    letter-spacing: .08em;
+  }
+
+  .wordmark {
+    position: absolute;
+    top: 44px;
+    left: 60px;
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  .wordmark span { color: var(--blue); }
+
+  .divline {
+    width: 3px;
+    background: var(--blue);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ─────────────────────────────────
+     SLIDE 1 · PROBLEM
+  ───────────────────────────────── */
+  #s1 {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  #s1::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 900px 700px at 50% 45%, #0D1B40 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  #s1 .eyebrow {
+    font-family: var(--mono);
+    font-size: 14px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 28px;
+  }
+
+  #s1 h1 {
+    font-family: var(--display);
+    font-size: 90px;
+    font-weight: 800;
+    line-height: 1.0;
+    max-width: 1100px;
+    margin: 0 auto 24px;
+    text-wrap: balance;
+  }
+
+  #s1 h1 em { font-style: normal; color: var(--amber); }
+
+  #s1 .sub {
+    font-size: 26px;
+    font-weight: 300;
+    color: var(--text-2);
+    max-width: 720px;
+    margin: 0 auto 72px;
+    line-height: 1.5;
+  }
+
+  .stat-row {
+    display: flex;
+    gap: 80px;
+    align-items: flex-start;
+    margin-top: 16px;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat .num {
+    font-family: var(--display);
+    font-size: 68px;
+    font-weight: 800;
+    color: var(--blue);
+    line-height: 1;
+    display: block;
+  }
+
+  .stat .label {
+    font-size: 16px;
+    color: var(--text-2);
+    margin-top: 10px;
+    max-width: 220px;
+    line-height: 1.4;
+  }
+
+  /* ─────────────────────────────────
+     SLIDE 2 · WHY EXISTING APPROACHES FAIL
+  ───────────────────────────────── */
+  #s2 { flex-direction: column; padding: 80px 120px 60px; }
+
+  #s2 .hd {
+    margin-bottom: 16px;
+  }
+
+  #s2 .hd .eyebrow {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 18px;
+  }
+
+  #s2 .hd h2 {
+    font-family: var(--display);
+    font-size: 58px;
+    font-weight: 800;
+    line-height: 1.05;
+    max-width: 900px;
+  }
+
+  #s2 .hd h2 em { font-style: normal; color: var(--red); }
+
+  .fail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 32px;
+    margin-top: 48px;
+    flex: 1;
+  }
+
+  .fail-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px 40px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .fail-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--red);
+    opacity: .5;
+  }
+
+  .fail-card .icon {
+    width: 52px; height: 52px;
+    background: var(--red-dim);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+  }
+
+  .fail-card h3 {
+    font-family: var(--display);
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .fail-card p {
+    font-size: 18px;
+    color: var(--text-2);
+    line-height: 1.55;
+  }
+
+  .fail-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 16px;
+    color: var(--text-2);
+  }
+
+  .fail-item::before {
+    content: '✕';
+    color: var(--red);
+    flex-shrink: 0;
+    margin-top: 2px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .gap-callout {
+    margin-top: 40px;
+    padding: 24px 36px;
+    border: 1px solid rgba(74,159,255,0.3);
+    border-radius: 10px;
+    background: var(--blue-dim);
+    font-size: 20px;
+    color: var(--blue);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .gap-callout::before { content: '→'; font-size: 24px; }
+
+  /* ─────────────────────────────────
+     SLIDE 3 · EXAMSHIELD SOLUTION
+  ───────────────────────────────── */
+  #s3 { padding: 0; }
+
+  .s3-left {
+    width: 760px;
+    flex-shrink: 0;
+    background: var(--surface);
+    padding: 90px 72px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+
+  .s3-left::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px; height: 100%;
+    background: linear-gradient(180deg, var(--teal) 0%, var(--blue) 100%);
+  }
+
+  .s3-left .eyebrow {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 24px;
+  }
+
+  .s3-left h2 {
+    font-family: var(--display);
+    font-size: 56px;
+    font-weight: 800;
+    line-height: 1.08;
+    margin-bottom: 28px;
+  }
+
+  .s3-left h2 em { font-style: normal; color: var(--teal); }
+
+  .s3-left p {
+    font-size: 20px;
+    color: var(--text-2);
+    line-height: 1.6;
+    margin-bottom: 40px;
+  }
+
+  .tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid;
+  }
+
+  .tag.blue { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+  .tag.teal { border-color: var(--teal); color: var(--teal); background: var(--teal-dim); }
+  .tag.amber { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
+
+  .s3-right {
+    flex: 1;
+    padding: 90px 72px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  .pillar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pillar::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+  .pillar.blue::before { background: var(--blue); }
+  .pillar.teal::before { background: var(--teal); }
+  .pillar.amber::before { background: var(--amber); }
+
+  .pillar-icon {
+    font-size: 28px;
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    flex-shrink: 0;
+    font-family: var(--mono);
+    font-size: 20px;
+  }
+  .pillar.blue .pillar-icon { background: var(--blue-dim); color: var(--blue); }
+  .pillar.teal .pillar-icon { background: var(--teal-dim); color: var(--teal); }
+  .pillar.amber .pillar-icon { background: var(--amber-dim); color: var(--amber); }
+
+  .pillar h4 {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .pillar p {
+    font-size: 16px;
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+
+  /* ─────────────────────────────────
+     SLIDE 4 · HOW IT WORKS
+  ───────────────────────────────── */
+  #s4 { flex-direction: column; padding: 72px 100px 60px; }
+
+  #s4 h2 {
+    font-family: var(--display);
+    font-size: 54px;
+    font-weight: 800;
+    margin-bottom: 56px;
+  }
+
+  #s4 h2 span { color: var(--blue); }
+
+  .pipeline {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    flex: 1;
+  }
+
+  .pipe-step {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 36px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
+  }
+
+  .pipe-step:not(:last-child)::after {
+    content: '→';
+    position: absolute;
+    right: -28px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 24px;
+    color: var(--blue);
+    z-index: 1;
+  }
+
+  .pipe-step + .pipe-step { margin-left: 40px; }
+
+  .pipe-step .num {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .12em;
+    color: var(--text-3);
+    text-transform: uppercase;
+  }
+
+  .pipe-step .title {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .pipe-step .file {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--teal);
+    background: var(--teal-dim);
+    border-radius: 4px;
+    padding: 4px 8px;
+    display: inline-block;
+    width: fit-content;
+  }
+
+  .pipe-step p {
+    font-size: 15px;
+    color: var(--text-2);
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .pipe-step .tech-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .pipe-tech {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--blue);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .pipe-tech::before { content: '·'; }
+
+  /* ─────────────────────────────────
+     SLIDE 5 · ARCHITECTURE
+  ───────────────────────────────── */
+  #s5 { flex-direction: column; padding: 70px 100px 60px; }
+
+  #s5 h2 {
+    font-family: var(--display);
+    font-size: 52px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+
+  #s5 h2 span { color: var(--teal); }
+
+  #s5 .sub {
+    font-size: 18px;
+    color: var(--text-2);
+    margin-bottom: 44px;
+  }
+
+  .arch-diagram {
+    flex: 1;
+    position: relative;
+  }
+
+  .arch-diagram svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ─────────────────────────────────
+     SLIDE 6 · AI + BEHAVIORAL INTELLIGENCE
+  ───────────────────────────────── */
+  #s6 { padding: 0; }
+
+  .s6-left {
+    width: 860px;
+    flex-shrink: 0;
+    padding: 80px 80px 60px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .s6-left::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px; height: 100%;
+    background: var(--teal);
+  }
+
+  .s6-left .eyebrow {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 20px;
+  }
+
+  .s6-left h2 {
+    font-family: var(--display);
+    font-size: 52px;
+    font-weight: 800;
+    margin-bottom: 36px;
+    line-height: 1.08;
+  }
+
+  .s6-left h2 em { font-style: normal; color: var(--teal); }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+    margin-bottom: 36px;
+  }
+
+  .feat {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    color: var(--text-2);
+  }
+
+  .feat-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--teal);
+    flex-shrink: 0;
+  }
+
+  .model-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+  }
+
+  .model-card h4 {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--teal);
+    margin-bottom: 14px;
+  }
+
+  .model-stats {
+    display: flex;
+    gap: 32px;
+  }
+
+  .mstat .val {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text);
+    display: block;
+  }
+
+  .mstat .lbl {
+    font-size: 13px;
+    color: var(--text-3);
+    display: block;
+    margin-top: 4px;
+  }
+
+  .s6-right {
+    flex: 1;
+    padding: 80px 72px 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .s6-right h3 {
+    font-family: var(--display);
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 32px;
+    color: var(--text-2);
+  }
+
+  .risk-stage {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .risk-stage::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+
+  .risk-stage.s1::before { background: var(--blue); }
+  .risk-stage.s2::before { background: var(--amber); }
+  .risk-stage.s3::before { background: var(--red); }
+
+  .risk-stage-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 8px;
+  }
+
+  .risk-stage-title {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .risk-stage.s1 .risk-stage-title { color: var(--blue); }
+  .risk-stage.s2 .risk-stage-title { color: var(--amber); }
+  .risk-stage.s3 .risk-stage-title { color: var(--red); }
+
+  .risk-stage-desc {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--text-2);
+  }
+
+  /* ─────────────────────────────────
+     SLIDE 7 · LIVE DEMO / RESULTS
+  ───────────────────────────────── */
+  #s7 { flex-direction: column; padding: 60px 80px 50px; }
+
+  #s7 h2 {
+    font-family: var(--display);
+    font-size: 52px;
+    font-weight: 800;
+    margin-bottom: 44px;
+  }
+  #s7 h2 span { color: var(--amber); }
+
+  .demo-layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    grid-template-rows: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .demo-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .demo-panel.main { grid-row: 1 / 3; }
+
+  .demo-panel .panel-title {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .1em;
+    color: var(--text-3);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dot-red { width: 10px; height: 10px; border-radius: 50%; background: #EF4444; }
+  .dot-amber { width: 10px; height: 10px; border-radius: 50%; background: #F59E0B; }
+  .dot-green { width: 10px; height: 10px; border-radius: 50%; background: #22C55E; }
+
+  /* Risk gauge SVG panel */
+  .gauge-area {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Timeline panel */
+  .timeline-area {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .tl-entry {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+  }
+
+  .tl-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .tl-badge.high { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .tl-badge.med  { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+
+  .tl-text { color: var(--text-2); font-size: 14px; }
+
+  /* Feature stats panel */
+  .stats-area {
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    align-content: start;
+  }
+
+  .stat-tile {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .stat-tile .sval {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--blue);
+    display: block;
+  }
+
+  .stat-tile .slbl {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 3px;
+    display: block;
+  }
+
+  /* ─────────────────────────────────
+     SLIDE 8 · INNOVATION + PRIVACY
+  ───────────────────────────────── */
+  #s8 { flex-direction: column; padding: 72px 100px 60px; }
+
+  #s8 h2 {
+    font-family: var(--display);
+    font-size: 54px;
+    font-weight: 800;
+    margin-bottom: 48px;
+  }
+  #s8 h2 em { font-style: normal; color: var(--teal); }
+
+  .innovation-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 28px;
+    flex: 1;
+  }
+
+  .innov-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 36px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .innov-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .innov-card.teal::after { background: var(--teal); }
+  .innov-card.blue::after { background: var(--blue); }
+  .innov-card.amber::after { background: var(--amber); }
+
+  .innov-card h3 {
+    font-family: var(--display);
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .innov-card p {
+    font-size: 17px;
+    color: var(--text-2);
+    line-height: 1.55;
+  }
+
+  .innov-card .code-snippet {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--teal);
+    line-height: 1.6;
+    margin-top: auto;
+  }
+
+  .drift-states {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: auto;
+  }
+
+  .drift-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  .drift-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .privacy-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: auto;
+  }
+
+  .priv-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    color: var(--text-2);
+  }
+  .priv-item::before { content: '✓'; color: var(--teal); font-weight: 700; }
+
+  /* ─────────────────────────────────
+     SLIDE 9 · TECHNICAL RELIABILITY
+  ───────────────────────────────── */
+  #s9 { flex-direction: column; padding: 72px 100px 60px; }
+
+  #s9 h2 {
+    font-family: var(--display);
+    font-size: 54px;
+    font-weight: 800;
+    margin-bottom: 48px;
+  }
+  #s9 h2 span { color: var(--blue); }
+
+  .reliability-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr 1fr;
+    gap: 28px;
+    flex: 1;
+    align-items: start;
+  }
+
+  .test-hero {
+    background: linear-gradient(135deg, var(--blue-dim) 0%, var(--teal-dim) 100%);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px 32px;
+    text-align: center;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .test-hero .big-num {
+    font-family: var(--display);
+    font-size: 100px;
+    font-weight: 800;
+    line-height: 1;
+    color: #4A9FFF;
+  }
+
+  .test-hero .big-lbl {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .test-hero .big-sub {
+    font-size: 15px;
+    color: var(--text-2);
+    line-height: 1.4;
+    margin-top: 8px;
+  }
+
+  .rel-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 30px;
+    height: 100%;
+  }
+
+  .rel-card h3 {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: var(--blue);
+  }
+
+  .rel-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .rel-item:last-child { border-bottom: none; }
+
+  .rel-item .ri-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .rel-item .ri-detail {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-3);
+  }
+
+  /* ─────────────────────────────────
+     SLIDE 10 · IMPACT + FUTURE
+  ───────────────────────────────── */
+  #s10 {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+  }
+
+  #s10::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 1100px 800px at 50% 45%, #0A1D35 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  #s10 .eyebrow {
+    font-family: var(--mono);
+    font-size: 14px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 28px;
+  }
+
+  #s10 h2 {
+    font-family: var(--display);
+    font-size: 76px;
+    font-weight: 800;
+    line-height: 1.05;
+    max-width: 1200px;
+    margin-bottom: 60px;
+  }
+
+  #s10 h2 em { font-style: normal; color: var(--teal); }
+
+  .impact-grid {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 60px;
+  }
+
+  .impact-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 30px 36px;
+    text-align: left;
+    min-width: 340px;
+  }
+
+  .impact-item h4 {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 10px;
+  }
+
+  .impact-item p {
+    font-size: 17px;
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--blue);
+    color: var(--ground);
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 700;
+    padding: 20px 48px;
+    border-radius: 10px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     SLIDE 1 · PROBLEM
+═══════════════════════════════════════ -->
+<div class="slide" data-canvas-width="1920" data-canvas-height="1080" id="s1">
+  <div class="wordmark">Exam<span>Shield</span></div>
+  <div class="eyebrow">The Problem</div>
+  <h1>Online exams are an <em>open door</em> for academic dishonesty</h1>
+  <p class="sub">As education moved online, monitoring tools stayed analog. Webcams watch faces. Nothing watches behavior.</p>
+  <div class="stat-row">
+    <div class="stat">
+      <span class="num">93%</span>
+      <span class="label">of universities moved to online/hybrid exams post-2020</span>
+    </div>
+    <div class="stat">
+      <span class="num">1 in 3</span>
+      <span class="label">students admit to cheating on at least one online assessment</span>
+    </div>
+    <div class="stat">
+      <span class="num">$40–100</span>
+      <span class="label">cost per exam for human proctoring — unsustainable at scale</span>
+    </div>
+  </div>
+  <div class="slide-num">01 / 10</div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SLIDE 2 · WHY EXISTING APPROACHES FAIL
+═══════════════════════════════════════ -->
+<div class="slide" data-canvas-width="1920" data-canvas-height="1080" id="s2">
+  <div class="wordmark">Exam<span>Shield</span></div>
+  <div class="hd">
+    <div class="eyebrow">Why Existing Approaches Aren't Enough</div>
+    <h2>Every current solution misses <em>the core signal</em></h2>
+  </div>
+  <div class="fail-grid">
+    <div class="fail-card">
+      <div class="icon">🎥</div>
+      <h3>Webcam Proctoring</h3>
+      <p>Captures a face, not intent. A second device, phone, or printed cheat sheet is invisible to the camera.</p>
+      <div class="fail-item">Privacy-invasive — students object on rights grounds</div>
+      <div class="fail-item">Proven bias in face-detection models</div>
+      <div class="fail-item">Fails entirely without a working camera</div>
+    </div>
+    <div class="fail-card">
+      <div class="icon">🔒</div>
+      <h3>Lockdown Browsers</h3>
+      <p>Block the browser. Don't block the problem. A second phone, a VM, or a friend in the room defeats it entirely.</p>
+      <div class="fail-item">No behavioral understanding of exam engagement</div>
+      <div class="fail-item">Easily bypassed — documented workarounds are public</div>
+      <div class="fail-item">Zero forensic evidence after the fact</div>
+    </div>
+    <div class="fail-card">
+      <div class="icon">👤</div>
+      <h3>Human Proctors</h3>
+      <p>Effective for small cohorts. Breaks at scale — cost, scheduling, subjective judgment.</p>
+      <div class="fail-item">$40–100 per session, unsustainable for institutions</div>
+      <div class="fail-item">Cannot monitor behavioral micro-patterns in real time</div>
+      <div class="fail-item">Inconsistent evaluation across proctors</div>
+    </div>
+  </div>
+  <div class="gap-callout">The gap: none of these systems understand <em>how</em> a student interacts with the exam — only <em>whether</em> their face is present.</div>
+  <div class="slide-num">02 / 10</div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SLIDE 3 · EXAMSHIELD SOLUTION
+═══════════════════════════════════════ -->
+<div class="slide" data-canvas-width="1920" data-canvas-height="1080" id="s3">
+  <div class="wordmark">Exam<span>Shield</span></div>
+  <div class="s3-left">
+    <div class="eyebrow">The Solution</div>
+    <h2>Behavioral intelligence,<br>not <em>surveillance</em></h2>
+    <p>ExamShield watches how a student engages with the exam — typing rhythm, copy/paste, idle patterns, tab focus — and surfaces anomalies in real time to a proctor dashboard. No cameras required.</p>
+    <div class="tag-row">
+      <span class="tag blue">FastAPI WebSocket</span>
+      <span class="tag teal">Isolation Forest ML</span>
+      <span class="tag amber">Consent Firewall</span>
+      <span class="tag blue">Next.js 15</span>
+      <span class="tag teal">Supabase Auth</span>
+      <span class="tag amber">Real-time Risk Scoring</span>
+    </div>
+  </div>
+  <div class="s3-right">
+    <div class="pillar blue">
+      <div class="pillar-icon">⚡</div>
+      <div>
+        <h4>Real-Time Behavioral Analysis</h4>
+        <p>WebSocket streaming delivers behavioral snapshots every 3 seconds. Risk scores update live on the admin dashboard as the exam progresses.</p>
+      </div>
+    </div>
+    <div class="pillar teal">
+      <div class="pillar-icon">🧠</div>
+      <div>
+        <h4>Isolation Forest Anomaly Detection</h4>
+        <p>300-tree ensemble trained on 600 synthetic behavioral samples. 8 features. 3-stage risk formula that accumulates across the full session.</p>
+      </div>
+    </div>
+    <div class="pillar amber">
+      <div class="pillar-icon">🔐</div>
+      <div>
+        <h4>Consent Firewall + Drift Detection</h4>
+        <p>Consent is cryptographically frozen at grant time. Any scope change is detected and triggers automatic consent invalidation — not a UI prompt.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-num">03 / 10</div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SLIDE 4 · HOW IT WORKS
+═══════════════════════════════════════ -->
+<div class="slide" data-canvas-width="1920" data-canvas-height="1080" id="s4">
+  <div class="wordmark">Exam<span>Shield</span></div>
+  <h2>End-to-end <span>pipeline</span></h2>
+  <div class="pipeline">
+    <div class="pipe-step">
+      <span class="num">Step 01</span>
+      <span class="file">useBehaviorTracker.ts</span>
+      <span class="title">Browser Events Captured</span>
+      <p>React hook attaches listeners for keydown (anonymized), keyup, mousemove (500ms throttle), visibilitychange, blur, copy, and paste. Idle detection at 5s threshold.</p>
+      <div class="tech-list">
+        <span class="pipe-tech">Event buffer flushed every 3 s</span>
+        <span class="pipe-tech">Keystroke anonymized ('char' or key name)</span>
+        <span class="pipe-tech">8 event types tracked</span>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <span class="num">Step 02</span>
+      <span class="file">useWebSocket.ts</span>
+      <span class="title">WebSocket Streaming</span>
+      <p>Authenticated WebSocket connection to <code style="font-family:var(--mono);font-size:12px;color:var(--teal)">/ws/{session_id}?token=JWT</code>. BehaviorSnapshot sent every 3 s. Exponential backoff reconnect (max 5 attempts).</p>
+      <div class="tech-list">
+        <span class="pipe-tech">JWT verified before accept()</span>
+        <span class="pipe-tech">Bidirectional — receives risk_update</span>
+        <span class="pipe-tech">User-ID cross-checked every message</span>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <span class="num">Step 03</span>
+      <span class="file">isolation_forest.py</span>
+      <span class="title">ML Feature Extraction</span>
+      <p>BehaviorSnapshot parsed into 8 numeric features: typing_speed, avg_key_interval, key_variance, mouse_activity, idle_duration, tab_switch_count, copy_count, paste_count.</p>
+      <div class="tech-list">
+        <span class="pipe-tech">Pydantic v2 field-level validation</span>
+        <span class="pipe-tech">Window-level ML assessment</span>
+        <span class="pipe-tech">Isolation Forest: 300 trees, 8% contamination</span>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <span class="num">Step 04</span>
+      <span class="file">routes.py · session.py</span>
+      <span class="title">Cumulative Risk Scoring</span>
+      <p><code style="font-family:var(--mono);font-size:12px;color:var(--teal)">_cumulative_assessment()</code> merges window into session totals. 3-stage formula: ML(0–55) → Rule Boost(0–84) → Synergy +10 (cap 99).</p>
+      <div class="tech-list">
+        <span class="pipe-tech">11 session-wide accumulators</span>
+        <span class="pipe-tech">Risk never decreases mid-session</span>
+        <span class="pipe-tech">Timeline preserves forensic event types</span>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <span class="num">Step 05</span>
+      <span class="file">dashboard/page.tsx</span>
+      <span class="title">Admin Dashboard Broadcast</span>
+      <p>Risk assessment broadcast to <code style="font-family:var(--mono);font-size:12px;color:var(--teal)">/ws-dashboard</code> listeners. Recharts AreaChart shows risk history. Alert fires at score &gt; 70.</p>
+      <div class="tech-list">
+        <span class="pipe-tech">RiskGauge SVG semicircle</span>
+        <span class="pipe-tech">SessionReplayModal (20 s replay)</span>
+        <span class="pipe-tech">CandidateSelector with live pulse</span>
+      </div>
+    </div>
+  </div>
+  <div class="slide-num">04 / 10</div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SLIDE 5 · ARCHITECTURE
+═══════════════════════════════════════ -->
+<div class="slide" data-canvas-width="1920" data-canvas-height="1080" id="s5">
+  <div class="wordmark">Exam<span>Shield</span></div>
+  <h2>System <span>Architecture</span></h2>
+  <p class="sub">Three independently secure layers — frontend auth gate, backend JWT verification, ML assessment engine</p>
+  <div class="arch-diagram">
+    <svg viewBox="0 0 1720 520" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#4A9FFF" opacity=".7"/>
+        </marker>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#00D4AA" opacity=".7"/>
+        </marker>
+      </defs>
+
+      <!-- Student browser -->
+      <rect x="0" y="60" width="320" height="400" rx="12" fill="#0D1527" stroke="#1A2844" stroke-width="1.5"/>
+      <rect x="0" y="60" width="320" height="4" rx="2" fill="#4A9FFF"/>
+      <text x="160" y="110" text-anchor="middle" fill="#8BA3C7" font-family=""source-code-pro",monospace" font-size="11" letter-spacing=".12em" text-transform="uppercase">STUDENT BROWSER</text>
+      <text x="160" y="145" text-anchor="middle" fill="#F0F4FF" font-family=""acumin-pro",sans-serif" font-size="20" font-weight="700">Next.js 15</text>
+      <text x="160" y="170" text-anchor="middle" fill="#8BA3C7" font-family=""ibm-plex-sans",sans-serif" font-size="14">App Router · React 19</text>
+
+      <rect x="24" y="195" width="272" height="44" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="160" y="222" text-anchor="middle" fill="#4A9FFF" font-family=""source-code-pro",monospace" font-size="13">useBehaviorTracker.ts</text>
+
+      <rect x="24" y="251" width="272" height="44" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="160" y="278" text-anchor="middle" fill="#4A9FFF" font-family=""source-code-pro",monospace" font-size="13">useWebSocket.ts</text>
+
+      <rect x="24" y="307" width="272" height="44" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="160" y="334" text-anchor="middle" fill="#4A9FFF" font-family=""source-code-pro",monospace" font-size="13">exam/page.tsx</text>
+
+      <rect x="24" y="363" width="272" height="60" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="160" y="388" text-anchor="middle" fill="#8BA3C7" font-family=""ibm-plex-sans",sans-serif" font-size="13">Supabase Auth</text>
+      <text x="160" y="408" text-anchor="middle" fill="#5B7AA8" font-family=""source-code-pro",monospace" font-size="12">JWT (ES256)</text>
+
+      <!-- Arrow: student → backend -->
+      <line x1="322" y1="260" x2="520" y2="260" stroke="#4A9FFF" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arr)" opacity=".7"/>
+      <text x="421" y="248" text-anchor="middle" fill="#4A9FFF" font-family=""source-code-pro",monospace" font-size="11">WS /ws/{id}</text>
+      <line x1="520" y1="310" x2="322" y2="310" stroke="#4A9FFF" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arr)" opacity=".7"/>
+      <text x="421" y="330" text-anchor="middle" fill="#4A9FFF" font-family=""source-code-pro",monospace" font-size="11">risk_update</text>
+
+      <!-- Backend -->
+      <rect x="522" y="60" width="340" height="400" rx="12" fill="#0D1527" stroke="#1A2844" stroke-width="1.5"/>
+      <rect x="522" y="60" width="340" height="4" rx="2" fill="#00D4AA"/>
+      <text x="692" y="110" text-anchor="middle" fill="#8BA3C7" font-family=""source-code-pro",monospace" font-size="11" letter-spacing=".12em">BACKEND</text>
+      <text x="692" y="145" text-anchor="middle" fill="#F0F4FF" font-family=""acumin-pro",sans-serif" font-size="20" font-weight="700">FastAPI</text>
+      <text x="692" y="170" text-anchor="middle" fill="#8BA3C7" font-family=""ibm-plex-sans",sans-serif" font-size="14">Python async · Uvicorn</text>
+
+      <rect x="546" y="195" width="292" height="44" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="692" y="222" text-anchor="middle" fill="#00D4AA" font-family=""source-code-pro",monospace" font-size="13">api/routes.py</text>
+
+      <rect x="546" y="251" width="292" height="44" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="692" y="278" text-anchor="middle" fill="#00D4AA" font-family=""source-code-pro",monospace" font-size="13">api/consent_routes.py</text>
+
+      <rect x="546" y="307" width="292" height="44" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="692" y="334" text-anchor="middle" fill="#00D4AA" font-family=""source-code-pro",monospace" font-size="13">api/admin_routes.py</text>
+
+      <rect x="546" y="363" width="292" height="60" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="692" y="388" text-anchor="middle" fill="#8BA3C7" font-family=""ibm-plex-sans",sans-serif" font-size="13">models/session.py</text>
+      <text x="692" y="408" text-anchor="middle" fill="#5B7AA8" font-family=""source-code-pro",monospace" font-size="12">In-memory SessionStore</text>
+
+      <!-- Arrow: backend → ML -->
+      <line x1="864" y1="260" x2="1000" y2="260" stroke="#00D4AA" stroke-width="1.5" marker-end="url(#arr2)" opacity=".7"/>
+      <text x="932" y="248" text-anchor="middle" fill="#00D4AA" font-family=""source-code-pro",monospace" font-size="11">features</text>
+
+      <!-- ML Engine -->
+      <rect x="1002" y="60" width="320" height="280" rx="12" fill="#0D1527" stroke="#1A2844" stroke-width="1.5"/>
+      <rect x="1002" y="60" width="320" height="4" rx="2" fill="#00D4AA"/>
+      <text x="1162" y="110" text-anchor="middle" fill="#8BA3C7" font-family=""source-code-pro",monospace" font-size="11" letter-spacing=".12em">ML ENGINE</text>
+      <text x="1162" y="143" text-anchor="middle" fill="#F0F4FF" font-family=""acumin-pro",sans-serif" font-size="19" font-weight="700">scikit-learn</text>
+      <text x="1162" y="165" text-anchor="middle" fill="#8BA3C7" font-family=""ibm-plex-sans",sans-serif" font-size="14">Isolation Forest</text>
+
+      <rect x="1026" y="186" width="272" height="40" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="1162" y="211" text-anchor="middle" fill="#00D4AA" font-family=""source-code-pro",monospace" font-size="13">isolation_forest.py</text>
+
+      <rect x="1026" y="238" width="272" height="40" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="1162" y="263" text-anchor="middle" fill="#00D4AA" font-family=""source-code-pro",monospace" font-size="13">consent_firewall.py</text>
+
+      <rect x="1026" y="290" width="272" height="36" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="1162" y="313" text-anchor="middle" fill="#00D4AA" font-family=""source-code-pro",monospace" font-size="13">drift_detector.py</text>
+
+      <!-- Auth -->
+      <rect x="1002" y="370" width="320" height="90" rx="12" fill="#0D1527" stroke="#1A2844" stroke-width="1.5"/>
+      <rect x="1002" y="370" width="320" height="4" rx="2" fill="#F59E0B"/>
+      <text x="1162" y="410" text-anchor="middle" fill="#F0F4FF" font-family=""acumin-pro",sans-serif" font-size="18" font-weight="700">Supabase Auth</text>
+      <text x="1162" y="432" text-anchor="middle" fill="#8BA3C7" font-family=""ibm-plex-sans",sans-serif" font-size="13">JWKS · ES256 · RBAC</text>
+      <text x="1162" y="452" text-anchor="middle" fill="#5B7AA8" font-family=""source-code-pro",monospace" font-size="12">app_metadata.role === 'admin'</text>
+
+      <!-- Admin dashboard -->
+      <rect x="1400" y="60" width="320" height="280" rx="12" fill="#0D1527" stroke="#1A2844" stroke-width="1.5"/>
+      <rect x="1400" y="60" width="320" height="4" rx="2" fill="#4A9FFF"/>
+      <text x="1560" y="110" text-anchor="middle" fill="#8BA3C7" font-family=""source-code-pro",monospace" font-size="11" letter-spacing=".12em">ADMIN DASHBOARD</text>
+      <text x="1560" y="143" text-anchor="middle" fill="#F0F4FF" font-family=""acumin-pro",sans-serif" font-size="19" font-weight="700">Next.js</text>
+      <text x="1560" y="165" text-anchor="middle" fill="#8BA3C7" font-family=""ibm-plex-sans",sans-serif" font-size="14">dashboard/page.tsx</text>
+
+      <rect x="1424" y="186" width="272" height="38" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="1560" y="210" text-anchor="middle" fill="#4A9FFF" font-family=""source-code-pro",monospace" font-size="13">RiskGauge + AlertBanner</text>
+
+      <rect x="1424" y="236" width="272" height="38" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="1560" y="260" text-anchor="middle" fill="#4A9FFF" font-family=""source-code-pro",monospace" font-size="13">Recharts AreaChart</text>
+
+      <rect x="1424" y="286" width="272" height="38" rx="7" fill="#111E35" stroke="#1A2844"/>
+      <text x="1560" y="310" text-anchor="middle" fill="#4A9FFF" font-family=""source-code-pro",monospace" font-size="13">SessionReplayModal</text>
+
+      <!-- Arrow: backend → admin dashboard -->
+      <line x1="1324" y1="200" x2="1396" y2="200" stroke="#4A9FFF" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arr)" opacity=".7"/>
+      <text x="1360" y="188" text-anchor="middle" fill="#4A9FFF" font-family=""source-code-pro",monospace" font-size="11">WS broadcast</text>
+
+      <!-- Arrow: backend ↔ auth -->
+      <line x1="1162" y1="368" x2="1162" y2="346" stroke="#F59E0B" stroke-width="1.5" marker-end="url(#arr)" opacity=".7"/>
+      <line x1="800" y1="430" x2="1000" y2="415" stroke="#F59E0B" stroke-width="1" stroke-dasharray="5,4" opacity=".4"/>
+    </svg>
+  </div>
+  <div class="slide-num">05 / 10</div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SLIDE 6 · AI + BEHAVIORAL INTELLIGENCE
+═══════════════════════════════════════ -->
+<div class="slide" data-canvas-width="1920" data-canvas-height="1080" id="s6">
+  <div class="wordmark">Exam<span>Shield</span></div>
+  <div class="s6-left">
+    <div class="eyebrow">AI + Behavioral Intelligence</div>
+    <h2>8 signals.<br>One <em>anomaly score</em>.</h2>
+    <div class="feature-grid">
+      <div class="feat"><div class="feat-dot"></div>typing_speed (kpm)</div>
+      <div class="feat"><div class="feat-dot"></div>average_key_interval (ms)</div>
+      <div class="feat"><div class="feat-dot"></div>key_variance (rhythm entropy)</div>
+      <div class="feat"><div class="feat-dot"></div>mouse_activity (events/s)</div>
+      <div class="feat"><div class="feat-dot"></div>idle_duration (s)</div>
+      <div class="feat"><div class="feat-dot"></div>tab_switch_count</div>
+      <div class="feat"><div class="feat-dot"></div>copy_count</div>
+      <div class="feat"><div class="feat-dot"></div>paste_count</div>
+    </div>
+    <div class="model-card">
+      <h4>Isolation Forest Parameters</h4>
+      <div class="model-stats">
+        <div class="mstat">
+          <span class="val">300</span>
+          <span class="lbl">estimators (trees)</span>
+        </div>
+        <div class="mstat">
+          <span class="val">8%</span>
+          <span class="lbl">contamination rate</span>
+        </div>
+        <div class="mstat">
+          <span class="val">600</span>
+          <span class="lbl">synthetic training samples</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="s6-right">
+    <h3>3-Stage Risk Formula</h3>
+    <div class="risk-stage s1">
+      <div class="risk-stage-label">Stage 1 · ML Assessment</div>
+      <div class="risk-stage-title">Anomaly Score → 0–55</div>
+      <div class="risk-stage-desc">Piecewise percentile mapping from Isolation Forest raw score. Training distribution defines thresholds. Window-level ML assessment.</div>
+    </div>
+    <div class="risk-stage s2">
+      <div class="risk-stage-label">Stage 2 · Rule Boost</div>
+      <div class="risk-stage-title">max(ML, rule_score) → 0–84</div>
+      <div class="risk-stage-desc">Deterministic rule engine evaluates tab switches, paste events, copy events, idle duration. Score = max of ML or rule output, ensuring rule signals aren't masked.</div>
+    </div>
+    <div class="risk-stage s3">
+      <div class="risk-stage-label">Stage 3 · Synergy Boost</div>
+      <div class="risk-stage-title">+10 when ML &gt; 35 AND Rule &gt; 60 → cap 99</div>
+      <div class="risk-stage-desc">Synergy bonus fires only when both the anomaly model AND the rule engine independently flag the session — co-occurring signals that would rarely appear in legitimate exam behavior.</div>
+    </div>
+  </div>
+  <div class="slide-num">06 / 10</div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SLIDE 7 · LIVE DEMO / RESULTS
+═══════════════════════════════════════ -->
+<div class="slide" data-canvas-width="1920" data-canvas-height="1080" id="s7">
+  <div class="wordmark">Exam<span>Shield</span></div>
+  <h2>Live demo — <span>real exam data</span></h2>
+  <div class="demo-layout">
+
+    <!-- Main panel: candidate list + risk history -->
+    <div class="demo-panel main">
+      <div class="panel-title">
+        <div class="dot-red"></div><div class="dot-amber"></div><div class="dot-green"></div>
+        Admin Dashboard · Live Monitoring
+      </div>
+      <!-- Candidate row -->
+      <div style="padding:20px 24px; border-bottom: 1px solid #1A2844; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:#EF4444;box-shadow:0 0 8px #EF4444;animation:none;"></div>
+          <div>
+            <div style="font-family:"acumin-pro",sans-serif;font-weight:700;font-size:18px;">Alice Chen</div>
+            <div style="font-family:"source-code-pro",monospace;font-size:12px;color:#8BA3C7;">CS & Data Science Assessment · Q3/5</div>
+          </div>
+        </div>
+        <div style="font-family:"acumin-pro",sans-serif;font-size:42px;font-weight:800;color:#EF4444;">78</div>
+      </div>
+      <!-- Risk history chart (inline SVG) -->
+      <div style="padding:16px 24px;flex:1;">
+        <div style="font-family:"source-code-pro",monospace;font-size:11px;letter-spacing:.1em;color:#4A6080;text-transform:uppercase;margin-bottom:10px;">Risk Score History</div>
+        <svg viewBox="0 0 900 180" style="width:100%;height:180px;">
+          <defs>
+            <linearGradient id="rg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#EF4444" stop-opacity=".4"/>
+              <stop offset="100%" stop-color="#EF4444" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <!-- Grid lines -->
+          <line x1="0" y1="0" x2="900" y2="0" stroke="#1A2844" stroke-width="1"/>
+          <line x1="0" y1="60" x2="900" y2="60" stroke="#1A2844" stroke-width="1"/>
+          <line x1="0" y1="120" x2="900" y2="120" stroke="#1A2844" stroke-width="1"/>
+          <line x1="0" y1="180" x2="900" y2="180" stroke="#1A2844" stroke-width="1"/>
+          <!-- Threshold line at 70 -->
+          <line x1="0" y1="36" x2="900" y2="36" stroke="#EF4444" stroke-width="1" stroke-dasharray="6,4" opacity=".5"/>
+          <text x="850" y="30" fill="#EF4444" font-family=""source-code-pro",monospace" font-size="11" opacity=".7">HIGH</text>
+          <!-- Risk history path -->
+          <path d="M0,168 L80,156 L160,144 L220,132 L280,108 L340,96 L400,90 L450,72 L500,60 L560,54 L620,48 L680,42 L740,36 L800,30 L860,18 L900,14 L900,180 L0,180 Z" fill="url(#rg)"/>
+          <path d="M0,168 L80,156 L160,144 L220,132 L280,108 L340,96 L400,90 L450,72 L500,60 L560,54 L620,48 L680,42 L740,36 L800,30 L860,18 L900,14" fill="none" stroke="#EF4444" stroke-width="2.5"/>
+        </svg>
+      </div>
+      <!-- Feature stats -->
+      <div style="padding:0 24px 20px; display:grid;grid-template-columns:repeat(6,1fr);gap:10px;">
+        <div class="stat-tile"><span class="sval">412</span><span class="slbl">kpm</span></div>
+        <div class="stat-tile"><span class="sval">98</span><span class="slbl">ms interval</span></div>
+        <div class="stat-tile" style="background:#3D0F0F;"><span class="sval" style="color:#EF4444">4</span><span class="slbl">tab switches</span></div>
+        <div class="stat-tile" style="background:#3D2700;"><span class="sval" style="color:#F59E0B">3</span><span class="slbl">paste events</span></div>
+        <div class="stat-tile"><span class="sval">2</span><span class="slbl">copy events</span></div>
+        <div class="stat-tile"><span class="sval">8.2s</span><span class="slbl">idle</span></div>
+      </div>
+    </div>
+
+    <!-- Top right: Risk gauge -->
+    <div class="demo-panel">
+      <div class="panel-title">
+        <div class="dot-red"></div>
+        Risk Assessment
+      </div>
+      <div class="gauge-area">
+        <svg viewBox="0 0 240 130" style="width:220px;height:120px;">
+          <path d="M20,114 A100,100 0 0,1 220,114" fill="none" stroke="#1A2844" stroke-width="14" stroke-linecap="round"/>
+          <!-- Colored arc: 78/100 → ~140° of 180° = large-arc=0, sweep=0 -->
+          <path d="M20,114 A100,100 0 1,1 195,53" fill="none" stroke="#EF4444" stroke-width="14" stroke-linecap="round"/>
+          <text x="120" y="100" text-anchor="middle" fill="#EF4444" font-family=""acumin-pro",sans-serif" font-size="46" font-weight="800">78</text>
+          <text x="120" y="125" text-anchor="middle" fill="#EF4444" font-family=""ibm-plex-sans",sans-serif" font-size="14">HIGH RISK</text>
+        </svg>
+        <div style="font-size:13px;color:#8BA3C7;text-align:center;line-height:1.4;">Alert fired at score 71<br><span style="color:#EF4444;">4 tab switches + 3 paste events</span></div>
+      </div>
+    </div>
+
+    <!-- Bottom right: Timeline -->
+    <div class="demo-panel">
+      <div class="panel-title">
+        <div class="dot-amber"></div>
+        Forensic Timeline
+      </div>
+      <div class="timeline-area">
+        <div class="tl-entry">
+          <span class="tl-badge high">critical</span>
+          <span class="tl-text">Paste event detected</span>
+        </div>
+        <div class="tl-entry">
+          <span class="tl-badge high">critical</span>
+          <span class="tl-text">Excessive tab switching (4×)</span>
+        </div>
+        <div class="tl-entry">
+          <span class="tl-badge med">warning</span>
+          <span class="tl-text">Copy event detected</span>
+        </div>
+        <div class="tl-entry">
+          <span class="tl-badge med">warning</span>
+          <span class="tl-text">Extended idle: 8.2s</span>
+        </div>
+        <div class="tl-entry">
+          <span class="tl-badge med">warning</span>
+          <span class="tl-text">Paste event detected</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="slide-num">07 / 10</div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SLIDE 8 · INNOVATION + PRIVACY
+═══════════════════════════════════════ -->
+<div class="slide" data-canvas-width="1920" data-canvas-height="1080" id="s8">
+  <div class="wordmark">Exam<span>Shield</span></div>
+  <h2>Innovation + <em>Privacy</em></h2>
+  <div class="innovation-grid" style="flex:1;">
+
+    <div class="innov-card teal">
+      <h3 style="color:var(--teal)">Consent Firewall</h3>
+      <p>Consent is frozen at grant time as <code style="font-family:var(--mono);color:var(--teal)">original_context</code>. Authorization is always evaluated against the frozen snapshot, never the current context — making retroactive scope creep impossible at the code level.</p>
+      <div class="code-snippet">
+ConsentFirewall.authorize()<br>
+→ checks original_context<br>
+→ NOT current_context<br>
+→ frozen at consent grant
+      </div>
+    </div>
+
+    <div class="innov-card blue">
+      <h3 style="color:var(--blue)">Drift Detection</h3>
+      <p>DriftDetector is stateless — no database, no config. Every evaluation compares consent snapshot against runtime context. Four classification states with distinct recommended actions.</p>
+      <div class="drift-states">
+        <div class="drift-row"><div class="drift-dot" style="background:#22C55E;"></div><span style="color:#22C55E;">ALIGNED</span>&nbsp;— score 100</div>
+        <div class="drift-row"><div class="drift-dot" style="background:#F59E0B;"></div><span style="color:#F59E0B;">MINOR_DRIFT</span>&nbsp;— score 85</div>
+        <div class="drift-row"><div class="drift-dot" style="background:#EF4444;"></div><span style="color:#EF4444;">SIGNIFICANT_DRIFT</span>&nbsp;— score 15–70</div>
+        <div class="drift-row"><div class="drift-dot" style="background:#7C3AED;"></div><span style="color:#A78BFA;">CONSENT_INVALID</span>&nbsp;— score 0</div>
+      </div>
+    </div>
+
+    <div class="innov-card amber">
+      <h3 style="color:var(--amber)">Privacy-First Architecture</h3>
+      <p>No cameras. No audio. No full keystroke logging. Behavioral signals are statistical aggregates, not recordings. Zero PII in the ML feature vector.</p>
+      <div class="privacy-list">
+        <div class="priv-item">Keystrokes anonymized — 'char' or key name only</div>
+        <div class="priv-item">No biometric data collection</div>
+        <div class="priv-item">Service-role key never exposed to browser</div>
+        <div class="priv-item">Session data in-memory only, not persisted</div>
+        <div class="priv-item">NEXT_PUBLIC_* never includes secrets</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="slide-num">08 / 10</div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SLIDE 9 · TECHNICAL RELIABILITY
+═══════════════════════════════════════ -->
+<div class="slide" data-canvas-width="1920" data-canvas-height="1080" id="s9">
+  <div class="wordmark">Exam<span>Shield</span></div>
+  <h2>Technical <span>reliability</span></h2>
+  <div class="reliability-grid" style="flex:1;">
+
+    <div class="test-hero">
+      <div class="big-num">138</div>
+      <div class="big-lbl">tests passing</div>
+      <div class="big-sub">9 test files · pytest + FastAPI TestClient · WebSocket integration tests</div>
+    </div>
+
+    <div class="rel-card">
+      <h3>Security Architecture</h3>
+      <div class="rel-item">
+        <div class="ri-title">JWT verification before WebSocket accept()</div>
+        <div class="ri-detail">auth.py · PyJWK + ES256 · Supabase JWKS endpoint</div>
+      </div>
+      <div class="rel-item">
+        <div class="ri-title">User-ID cross-check on every message</div>
+        <div class="ri-detail">session.user_id !== user_id → immediate disconnect</div>
+      </div>
+      <div class="rel-item">
+        <div class="ri-title">Admin RBAC at server side</div>
+        <div class="ri-detail">app_metadata.role === 'admin' · never trusts client claim</div>
+      </div>
+      <div class="rel-item">
+        <div class="ri-title">Service-role key locked to env var</div>
+        <div class="ri-detail">SUPABASE_SERVICE_ROLE_KEY · never in NEXT_PUBLIC_*</div>
+      </div>
+      <div class="rel-item">
+        <div class="ri-title">Multi-user session isolation</div>
+        <div class="ri-detail">SessionStore.get_or_create() raises ValueError on mismatch</div>
+      </div>
+    </div>
+
+    <div class="rel-card">
+      <h3>Test Suite Coverage</h3>
+      <div class="rel-item">
+        <div class="ri-title">Regression: dashboard/timeline consistency</div>
+        <div class="ri-detail">test_dashboard_consistency.py · 7 tests</div>
+      </div>
+      <div class="rel-item">
+        <div class="ri-title">Copy & idle accumulation across windows</div>
+        <div class="ri-detail">test_copy_idle_metrics.py · 11 tests</div>
+      </div>
+      <div class="rel-item">
+        <div class="ri-title">Multi-user session isolation</div>
+        <div class="ri-detail">test_multi_user_isolation.py · adversarial scenarios</div>
+      </div>
+      <div class="rel-item">
+        <div class="ri-title">Consent firewall + drift detection</div>
+        <div class="ri-detail">test_consent.py + test_consent_firewall.py</div>
+      </div>
+      <div class="rel-item">
+        <div class="ri-title">Admin auth management</div>
+        <div class="ri-detail">test_admin_management.py + test_consent_auth.py</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="slide-num">09 / 10</div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SLIDE 10 · IMPACT + FUTURE
+═══════════════════════════════════════ -->
+<div class="slide" data-canvas-width="1920" data-canvas-height="1080" id="s10">
+  <div class="wordmark">Exam<span>Shield</span></div>
+  <div class="eyebrow">Impact + Future</div>
+  <h2>Behavioral integrity<br>at any <em>scale</em></h2>
+  <div class="impact-grid">
+    <div class="impact-item">
+      <h4>Today</h4>
+      <p>Real-time behavioral monitoring, zero cameras, consent-first architecture, full forensic timeline, 138 tests.</p>
+    </div>
+    <div class="impact-item">
+      <h4>Next milestone</h4>
+      <p>Persistent session storage (Supabase DB). Post-exam forensics report. LLM-powered pattern narrative generation.</p>
+    </div>
+    <div class="impact-item">
+      <h4>Scale target</h4>
+      <p>Institution-level dashboards. Multi-exam concurrent monitoring. Federated learning across exam cohorts.</p>
+    </div>
+    <div class="impact-item">
+      <h4>Academic integrity</h4>
+      <p>Statistically grounded evidence. No single-flag dismissal. Designed to support, not replace, human judgment.</p>
+    </div>
+  </div>
+  <div class="cta">github.com/examshield &nbsp;·&nbsp; Zero cameras. Real intelligence.</div>
+  <div class="slide-num">10 / 10</div>
+</div>
+
+</body>
+</html>
