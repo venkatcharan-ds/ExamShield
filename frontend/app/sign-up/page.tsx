@@ -23,7 +23,6 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
     if (!fullName.trim()) { setError('Enter your full name.'); return }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('Enter a valid email address.'); return }
     const pwIssue = passwordIssue(password)
@@ -37,7 +36,7 @@ export default function SignUpPage() {
       password,
       options: {
         data: { full_name: fullName.trim() },
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/portal`,
       },
     })
     setLoading(false)
@@ -49,23 +48,16 @@ export default function SignUpPage() {
       return
     }
 
-    // Supabase returns a user with no active session when email confirmation
-    // is required — never treat that as a fully authenticated login.
-    if (data.user && !data.session) {
-      setAwaitingConfirmation(true)
-    } else if (data.session) {
-      window.location.href = '/dashboard'
-    }
+    if (data.user && !data.session) setAwaitingConfirmation(true)
+    else if (data.session) window.location.href = '/portal'
   }
 
   if (awaitingConfirmation) {
     return (
       <AuthShell title="Check your email" subtitle={`We sent a confirmation link to ${email}.`}>
-        <AuthSuccess message="Click the link in your email to activate your account, then sign in." />
-        <Link href="/sign-in"
-          className="mt-2 inline-flex w-full items-center justify-center py-3 text-sm font-medium text-white rounded-xl transition-all duration-200 active:scale-[0.98]"
-          style={{ background: 'var(--brand)', boxShadow: '0 0 22px rgba(99,102,241,0.32)' }}>
-          Back to Sign In
+        <AuthSuccess message="Click the link in your email to activate your student account, then sign in." />
+        <Link href="/student/sign-in" className="mt-2 inline-flex w-full items-center justify-center py-3 text-sm font-medium text-white rounded-xl transition-all duration-200 active:scale-[0.98]" style={{ background: 'var(--brand)', boxShadow: '0 0 22px rgba(99,102,241,0.32)' }}>
+          Back to Student Login
         </Link>
       </AuthShell>
     )
@@ -73,56 +65,19 @@ export default function SignUpPage() {
 
   return (
     <AuthShell
-      title="Create account"
-      subtitle="Set up admin access to the ExamShield dashboard."
+      title="Create student account"
+      subtitle="Create your private ExamShield examination account."
       footer={
-        <>
-          Already have an account?{' '}
-          <Link href="/sign-in" className="font-medium underline underline-offset-2" style={{ color: '#A5B4FC' }}>
-            Sign in
-          </Link>
-        </>
+        <>Already have an account? <Link href="/student/sign-in" className="font-medium underline underline-offset-2" style={{ color: '#A5B4FC' }}>Student Login</Link></>
       }
     >
       <form onSubmit={handleSubmit} noValidate>
         <AuthError message={error} />
-
-        <AuthField
-          label="Full Name"
-          type="text"
-          autoComplete="name"
-          value={fullName}
-          onChange={e => setFullName(e.target.value)}
-          required
-        />
-        <AuthField
-          label="Email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          required
-        />
-        <AuthField
-          label="Password"
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          required
-        />
-        <AuthField
-          label="Confirm Password"
-          type="password"
-          autoComplete="new-password"
-          value={confirmPassword}
-          onChange={e => setConfirmPassword(e.target.value)}
-          required
-        />
-
-        <AuthSubmitButton type="submit" loading={loading}>
-          Create Account
-        </AuthSubmitButton>
+        <AuthField label="Full Name" type="text" autoComplete="name" value={fullName} onChange={e => setFullName(e.target.value)} required />
+        <AuthField label="Email" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} required />
+        <AuthField label="Password" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} required />
+        <AuthField label="Confirm Password" type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
+        <AuthSubmitButton type="submit" loading={loading}>Create Student Account</AuthSubmitButton>
       </form>
     </AuthShell>
   )
