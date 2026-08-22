@@ -1,99 +1,65 @@
 'use client'
 
-import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { AuthShell, AuthField, AuthError, AuthSubmitButton } from '@/components/AuthShell'
+import { Shield, GraduationCap, LayoutDashboard, ChevronRight } from 'lucide-react'
+import { AuthShell } from '@/components/AuthShell'
 
-function SignInForm() {
-  const searchParams = useSearchParams()
-  const next = searchParams.get('next') || '/dashboard'
-
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-
-    if (!email || !password) {
-      setError('Enter your email and password.')
-      return
-    }
-
-    setLoading(true)
-    const supabase = createClient()
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-    setLoading(false)
-
-    if (signInError) {
-      if (signInError.message.toLowerCase().includes('email not confirmed')) {
-        setError('Please verify your email before signing in — check your inbox for the confirmation link.')
-      } else {
-        setError('Invalid email or password.')
-      }
-      return
-    }
-
-    // Full navigation (not router.push) so the just-set session cookie is
-    // guaranteed to be present on the next request middleware sees.
-    window.location.href = next
-  }
-
+export default function SignInPage() {
   return (
     <AuthShell
-      title="Welcome back"
-      subtitle="Sign in to the ExamShield admin dashboard."
+      title="Sign in to ExamShield"
+      subtitle="Choose the workspace you need to access."
       footer={
         <>
-          Don&apos;t have an account?{' '}
+          New student?{' '}
           <Link href="/sign-up" className="font-medium underline underline-offset-2" style={{ color: '#A5B4FC' }}>
-            Create account
+            Create a student account
           </Link>
         </>
       }
     >
-      <form onSubmit={handleSubmit} noValidate>
-        <AuthError message={error} />
+      <div className="space-y-3">
+        <Link
+          href="/student/sign-in"
+          className="group flex items-center gap-4 rounded-2xl p-4 transition-all duration-200"
+          style={{
+            background: 'rgba(99,102,241,0.08)',
+            border: '1px solid rgba(99,102,241,0.22)',
+          }}
+        >
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(99,102,241,0.16)' }}>
+            <GraduationCap className="w-5 h-5" style={{ color: '#A5B4FC' }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold" style={{ color: 'var(--text-0)' }}>Student Login</div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--text-2)' }}>Enter your exam portal and take assessments.</div>
+          </div>
+          <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" style={{ color: 'var(--text-3)' }} />
+        </Link>
 
-        <AuthField
-          label="Email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          required
-        />
-        <AuthField
-          label="Password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          required
-        />
+        <Link
+          href="/admin/sign-in"
+          className="group flex items-center gap-4 rounded-2xl p-4 transition-all duration-200"
+          style={{
+            background: 'rgba(16,185,129,0.06)',
+            border: '1px solid rgba(16,185,129,0.18)',
+          }}
+        >
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(16,185,129,0.12)' }}>
+            <LayoutDashboard className="w-5 h-5" style={{ color: '#6EE7B7' }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold" style={{ color: 'var(--text-0)' }}>Admin Login</div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--text-2)' }}>Monitor live exams, risk signals, and candidate sessions.</div>
+          </div>
+          <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" style={{ color: 'var(--text-3)' }} />
+        </Link>
+      </div>
 
-        <div className="flex justify-end -mt-2 mb-5">
-          <Link href="/forgot-password" className="text-xs" style={{ color: 'var(--text-2)' }}>
-            Forgot password?
-          </Link>
-        </div>
-
-        <AuthSubmitButton type="submit" loading={loading}>
-          Sign In
-        </AuthSubmitButton>
-      </form>
+      <div className="mt-5 flex items-center justify-center gap-2 text-[11px]" style={{ color: 'var(--text-3)' }}>
+        <Shield className="w-3.5 h-3.5" />
+        Role-based access · Privacy-first monitoring
+      </div>
     </AuthShell>
-  )
-}
-
-export default function SignInPage() {
-  return (
-    <Suspense fallback={null}>
-      <SignInForm />
-    </Suspense>
   )
 }
