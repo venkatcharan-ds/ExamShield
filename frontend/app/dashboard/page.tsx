@@ -98,7 +98,14 @@ function RiskGauge({ score, level }: { score: number; level: string }) {
   })
   const start  = pt(0)
   const fillPt = pt(pct / 100)
-  const large  = pct > 50 ? 1 : 0
+  // This path only ever sweeps a fraction of a single semicircle (max 180°
+  // of the underlying circle, reached at pct=100), so the SVG
+  // large-arc-flag — which selects between an arc ≤180° and one >180° —
+  // must always be 0. The previous `pct > 50 ? 1 : 0` forced the reflex
+  // (long-way-round) arc above 50, which is what made e.g. a score of 55
+  // render as if it were ~70-80% of the arc. Same fix already applied to
+  // IntegrityIndexCard's identical geometry.
+  const large  = 0
 
   return (
     <div
