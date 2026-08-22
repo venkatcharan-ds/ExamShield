@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 
 from api.routes import router
 from api.consent_routes import router as consent_router
+from api.admin_routes import router as admin_router
 from ml.isolation_forest import engine  # triggers pre-training on import
 
 
@@ -49,6 +50,7 @@ app.add_middleware(
 
 app.include_router(router)
 app.include_router(consent_router)
+app.include_router(admin_router)
 
 
 @app.get("/")

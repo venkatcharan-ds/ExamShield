@@ -91,14 +91,14 @@ def test_behavior_snapshot_without_consent_record_behaves_exactly_as_before():
 
 
 def test_end_session_endpoint():
-    session_store.create("reg-session-3", "End Test")
+    session_store.create("reg-session-3", "End Test", "test-user-id")
     r = client.post("/api/sessions/reg-session-3/end")
     assert r.status_code == 200
     assert session_store.get("reg-session-3").is_active is False
 
 
 def test_dashboard_websocket_initial_state():
-    with client.websocket_connect("/ws-dashboard") as ws:
+    with client.websocket_connect("/ws-dashboard?token=test-token") as ws:
         msg = ws.receive_json()
         assert msg["type"] == "initial_state"
         assert msg["payload"] == []
@@ -107,19 +107,20 @@ def test_dashboard_websocket_initial_state():
 def test_session_start_records_exam_name_and_question_total():
     """Real exam sessions report which exam they're taking and how many
     questions it has, so the admin dashboard can show genuine progress
-    instead of a generic 'Demo Candidate' placeholder."""
+    instead of a generic 'Demo Candidate' placeholder.
+    The exam now has 5 long-answer questions (updated from 30 short-answer)."""
     session_id = "reg-session-exam-1"
     with client.websocket_connect(f"/ws/{session_id}") as ws:
         ws.send_json({"type": "session_start", "payload": {
             "session_id": session_id, "candidate_name": "Real Candidate",
             "exam_name": "Computer Science & Data Science Assessment",
-            "questions_total": 30,
+            "questions_total": 5,
         }})
         ws.receive_json()
 
     session = session_store.get(session_id)
     assert session.exam_name == "Computer Science & Data Science Assessment"
-    assert session.questions_total == 30
+    assert session.questions_total == 5
     assert session.questions_answered == 0
     assert session.to_dict()["exam_name"] == "Computer Science & Data Science Assessment"
 
@@ -166,3 +167,55 @@ def test_exam_progress_for_unknown_session_does_not_crash():
         ws.send_json({"type": "ping"})
         pong = ws.receive_json()
     assert pong == {"type": "pong", "payload": None}
+
+
+def test_five_question_exam_progress_clamps_and_tracks_correctly():
+    """With 5 long-answer questions, progress tracking must:
+    - accept answers_answered in 0..5 range
+    - clamp attempts to exceed 5
+    - correctly reflect progress in to_dict() for the dashboard
+    """
+    session_id = "reg-session-5q"
+    with client.websocket_connect(f"/ws/{session_id}") as ws:
+        ws.send_json({"type": "session_start", "payload": {
+            "session_id": session_id,
+            "candidate_name": "Five Question Candidate",
+            "exam_name": "Computer Science & Data Science Assessment",
+            "questions_total": 5,
+        }})
+        ws.receive_json()  # session_ack
+
+        # Partial progress — answered 3 of 5
+        ws.send_json({"type": "exam_progress", "payload": {
+            "session_id": session_id, "questions_answered": 3, "questions_total": 5,
+        }})
+
+    session = session_store.get(session_id)
+    assert session.questions_total == 5
+    assert session.questions_answered == 3
+
+    d = session.to_dict()
+    assert d["questions_total"] == 5
+    assert d["questions_answered"] == 3
+
+
+def test_five_question_exam_progress_cannot_exceed_total():
+    """questions_answered must be clamped to questions_total (5)."""
+    session_id = "reg-session-5q-clamp"
+    with client.websocket_connect(f"/ws/{session_id}") as ws:
+        ws.send_json({"type": "session_start", "payload": {
+            "session_id": session_id,
+            "candidate_name": "Clamp Test Candidate",
+            "questions_total": 5,
+        }})
+        ws.receive_json()
+
+        # Attempt to set answered > total — must be clamped to 5
+        ws.send_json({"type": "exam_progress", "payload": {
+            "session_id": session_id, "questions_answered": 99, "questions_total": 5,
+        }})
+
+    session = session_store.get(session_id)
+    assert session.questions_answered == 5, (
+        f"questions_answered should be clamped to 5, got {session.questions_answered}"
+    )

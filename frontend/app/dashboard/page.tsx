@@ -1621,6 +1621,16 @@ export default function DashboardPage() {
               )}
             </div>
 
+            <Link href="/dashboard/admin"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all duration-150"
+              style={{
+                color: 'var(--text-2)',
+                border: '1px solid var(--border-0)',
+              }}>
+              <Users className="w-3 h-3" />
+              Admin Management
+            </Link>
+
             <Link href="/exam"
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all duration-150"
               style={{

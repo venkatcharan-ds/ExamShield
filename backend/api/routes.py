@@ -78,7 +78,9 @@ async def exam_websocket(websocket: WebSocket, session_id: str, token: str = Que
                 payload = data.get("payload", {})
                 sid = payload.get("session_id", session_id)
                 session = store.get(sid)
-                if not session or session.user_id != user_id:
+                if session is None:
+                    continue  # race: progress update before session_start; ignore safely
+                if session.user_id != user_id:
                     await websocket.close(code=1008, reason="Session ownership mismatch")
                     return
                 if payload.get("questions_answered") is not None:

@@ -74,7 +74,7 @@ export default function PortalPage() {
             </div>
             <div>
               <div className="font-medium text-sm" style={{ color: 'var(--text-0)' }}>Computer Science &amp; Data Science Assessment</div>
-              <div className="text-xs" style={{ color: 'var(--text-3)' }}>30 questions · 60 minutes</div>
+              <div className="text-xs" style={{ color: 'var(--text-3)' }}>5 questions · 30 minutes</div>
             </div>
           </div>
           <p className="text-xs mb-5" style={{ color: 'var(--text-2)' }}>
