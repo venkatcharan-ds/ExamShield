@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { UserMenu } from '@/components/UserMenu'
+import { ConsentPanel } from '@/components/ConsentPanel'
 import {
   Shield, Activity, AlertTriangle, CheckCircle, Clock,
   Users, WifiOff, Play, RotateCcw, ExternalLink, X,
@@ -1977,6 +1978,9 @@ export default function DashboardPage() {
 
             {/* Behavior Analysis Report */}
             <BehaviorAnalysisReport session={session} />
+
+            {/* Consent Status / Drift */}
+            <ConsentPanel subjectId={session?.session_id ?? null} />
           </div>
 
           {/* ── Right panel ──────────────────────────────────────────── */}

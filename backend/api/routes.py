@@ -19,8 +19,14 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import JSONResponse
 
 from ml.isolation_forest import engine
+from ml.consent_firewall import firewall
 from models.session import store
+from models.consent import store as consent_store
 from schemas.events import BehaviorSnapshot
+
+# Data categories a behavior_snapshot always touches — this is ExamShield's
+# own action naming; the firewall itself has no idea what these mean.
+_BEHAVIOR_DATA_CATEGORIES = ["keystroke_timing", "mouse_movement", "tab_switching"]
 
 router = APIRouter()
 
@@ -82,6 +88,29 @@ async def exam_websocket(websocket: WebSocket, session_id: str):
                     session = store.get_or_create(
                         snapshot.session_id, snapshot.candidate_name
                     )
+
+                    # Consent Firewall — real enforcement, not a UI-only check.
+                    # If this session's consent has been withdrawn or expired,
+                    # the ML engine genuinely does not run: no risk_update is
+                    # produced and current_risk_score stops moving.
+                    consent_record = consent_store.get(snapshot.session_id)
+                    if consent_record is not None:
+                        decision = firewall.authorize(
+                            consent_record,
+                            action_name="analyze_behavior_for_exam_integrity",
+                            purpose="examination_integrity",
+                            data_categories=_BEHAVIOR_DATA_CATEGORIES,
+                        )
+                        if decision.decision == "BLOCK":
+                            session.add_timeline_entry(
+                                "consent_boundary_blocked", decision.reasons[0], "critical",
+                            )
+                            await websocket.send_json({
+                                "type": "consent_blocked",
+                                "payload": decision.to_dict(),
+                            })
+                            await _broadcast_to_dashboard(session.to_dict())
+                            continue
 
                     assessment = engine.assess(snapshot)
 

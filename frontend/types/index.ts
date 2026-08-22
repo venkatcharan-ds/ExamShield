@@ -74,3 +74,93 @@ export interface WebSocketMessage {
   type: 'behavior_snapshot' | 'risk_update' | 'session_start' | 'ping'
   payload: BehaviorSnapshot | RiskAssessment | { session_id: string; candidate_name: string } | null
 }
+
+/* ─── Consent Lifecycle & Drift Detection ───────────────────────────────── */
+
+export interface ConsentContext {
+  purpose: string[]
+  data_categories: string[]
+  collection_scope: string
+  processing_scope: string
+  version: string
+  prohibited_data: string[]
+  allowed_actions: string[]
+}
+
+export type ConsentStatus = 'active' | 'withdrawn'
+
+export interface ConsentAuditEvent {
+  id: string
+  timestamp: number
+  event: string
+  description: string
+  previous_state: Record<string, unknown> | null
+  new_state: Record<string, unknown> | null
+  reason: string | null
+}
+
+export type DriftStatus = 'ALIGNED' | 'MINOR_DRIFT' | 'SIGNIFICANT_DRIFT' | 'CONSENT_INVALID'
+
+export interface DriftCheck {
+  label: string
+  passed: boolean
+}
+
+export interface DriftResult {
+  status: DriftStatus
+  score: number
+  reasons: string[]
+  recommended_action: string
+  checks: DriftCheck[]
+  original_context: ConsentContext
+  current_context: ConsentContext
+}
+
+export interface ConsentRecord {
+  consent_id: string
+  subject_id: string
+  subject_type: string
+  consent_type: string
+  granted_at: number
+  expires_at: number
+  status: ConsentStatus
+  withdrawn_at: number | null
+  original_context: ConsentContext
+  current_context: ConsentContext
+  audit: ConsentAuditEvent[]
+  drift: DriftResult
+}
+
+export type DriftSimulationScenario =
+  | 'purpose_expansion'
+  | 'data_expansion'
+  | 'scope_change'
+  | 'expire'
+  | 'withdraw'
+  | 'reset'
+
+/* ─── Consent Firewall (boundary enforcement) ───────────────────────────── */
+
+export type FirewallDecisionType = 'ALLOW' | 'REQUEST_RECONSENT' | 'BLOCK'
+
+export interface FirewallDecision {
+  subject_id: string
+  action_name: string
+  decision: FirewallDecisionType
+  reasons: string[]
+  required_action: string | null
+}
+
+export interface ProcessingAction {
+  action_name: string
+  label: string
+  purpose: string
+  data_categories: string[]
+}
+
+export interface BoundaryImpact {
+  data_category: string
+  active_consents: number
+  unauthorized_count: number
+  unauthorized_pct: number
+}
