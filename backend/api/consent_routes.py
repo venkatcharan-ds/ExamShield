@@ -5,20 +5,32 @@ Generic, not exam-specific: subject_id is any string identifier (an exam
 session id today, but could be a user id or device id elsewhere). Mounted
 onto the same FastAPI app as the exam-monitoring routes in api/routes.py.
 
-  POST /api/consent/grant                    — record original consent context
+  POST /api/consent/grant                    — record original consent context      [auth required]
   GET  /api/consent/{subject_id}              — current record + live drift result
-  POST /api/consent/{subject_id}/update        — change purpose/scope/data/version
-  POST /api/consent/{subject_id}/withdraw       — withdraw consent
-  POST /api/consent/{subject_id}/simulate       — demo control: canned drift scenarios
+  POST /api/consent/{subject_id}/update        — change purpose/scope/data/version    [auth required]
+  POST /api/consent/{subject_id}/withdraw       — withdraw consent                     [auth required]
+  POST /api/consent/{subject_id}/simulate       — demo control: canned drift scenarios [auth required]
   GET  /api/consent/{subject_id}/timeline       — audit trail
+  POST /api/consent/{subject_id}/reconsent      — explicit, user-approved boundary change [auth required]
   POST /api/consent/{subject_id}/authorize      — consent firewall: ALLOW / BLOCK / REQUEST_RECONSENT
   GET  /api/consent/_boundary-impact            — live aggregate: how many active boundaries lack a data category
+
+Auth: every endpoint that changes consent state requires a valid Supabase
+bearer token (see ../auth.py) — the same session the dashboard already
+holds, since only the authenticated dashboard is meant to change consent.
+Read endpoints (get/timeline/_boundary-impact) and /authorize stay open:
+/authorize only ever *checks* a decision against the existing boundary —
+it can't move it — mirroring how a network firewall's "would this be
+allowed" check doesn't require the same privilege as changing the rule
+itself. The real enforcement point (the exam WebSocket) never calls this
+endpoint anyway; it calls the firewall in-process.
 """
 
 import time
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import JSONResponse
 
+from auth import require_user
 from models.consent import store, ConsentContext
 from ml.drift_detector import detector
 from ml.consent_firewall import firewall
@@ -51,7 +63,7 @@ def _assert_modifiable(record) -> None:
 
 
 @router.post("/grant")
-async def grant_consent(body: ConsentGrantRequest):
+async def grant_consent(body: ConsentGrantRequest, user_id: str = Depends(require_user)):
     existing = store.get(body.subject_id)
     if existing and existing.status == "active":
         return JSONResponse(content=_record_response(existing))
@@ -98,7 +110,7 @@ async def get_consent_timeline(subject_id: str):
 
 
 @router.post("/{subject_id}/update")
-async def update_consent(subject_id: str, body: ConsentUpdateRequest):
+async def update_consent(subject_id: str, body: ConsentUpdateRequest, user_id: str = Depends(require_user)):
     record = store.get(subject_id)
     if not record:
         raise HTTPException(status_code=404, detail="No consent record for this subject")
@@ -137,7 +149,7 @@ async def update_consent(subject_id: str, body: ConsentUpdateRequest):
 
 
 @router.post("/{subject_id}/reconsent")
-async def reconsent(subject_id: str, body: ConsentReconsentRequest):
+async def reconsent(subject_id: str, body: ConsentReconsentRequest, user_id: str = Depends(require_user)):
     """Explicit, user-approved boundary change. Unlike /update (which only
     edits current_context — the system's self-reported state, and never
     moves the firewall's boundary), this opens a *new* consent period with
@@ -181,7 +193,7 @@ async def reconsent(subject_id: str, body: ConsentReconsentRequest):
 
 
 @router.post("/{subject_id}/withdraw")
-async def withdraw_consent(subject_id: str, body: ConsentWithdrawRequest):
+async def withdraw_consent(subject_id: str, body: ConsentWithdrawRequest, user_id: str = Depends(require_user)):
     record = store.get(subject_id)
     if not record:
         raise HTTPException(status_code=404, detail="No consent record for this subject")
@@ -201,7 +213,7 @@ async def withdraw_consent(subject_id: str, body: ConsentWithdrawRequest):
 
 
 @router.post("/{subject_id}/simulate")
-async def simulate_consent(subject_id: str, body: ConsentSimulateRequest):
+async def simulate_consent(subject_id: str, body: ConsentSimulateRequest, user_id: str = Depends(require_user)):
     """Demo/dev control — deterministically drives a canned drift scenario
     so the lifecycle can be demonstrated without waiting for real drift."""
     record = store.get(subject_id)

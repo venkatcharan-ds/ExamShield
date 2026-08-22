@@ -5,6 +5,7 @@
 // dashboard's WS connection already does.
 
 import type { ConsentRecord, DriftSimulationScenario, FirewallDecision, BoundaryImpact, ProcessingAction } from '@/types'
+import { createClient } from '@/lib/supabase/client'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 
@@ -13,8 +14,27 @@ async function req<T = ConsentRecord>(path: string, init?: RequestInit): Promise
     ...init,
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
   })
-  if (!res.ok) throw new Error(`consent api ${path} → ${res.status}`)
+  if (!res.ok) {
+    const err = new Error(`consent api ${path} → ${res.status}`) as Error & { status?: number }
+    err.status = res.status
+    throw err
+  }
   return res.json()
+}
+
+// Consent-mutating calls (grant/update/withdraw/simulate/reconsent) require
+// the same signed-in session the dashboard already holds — the backend
+// verifies this token against Supabase's public key. Read-only calls
+// (get/authorize/boundary-impact) don't need it and stay unauthenticated.
+async function authHeaders(): Promise<Record<string, string>> {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+}
+
+async function mutate<T = ConsentRecord>(path: string, body: unknown): Promise<T> {
+  const headers = await authHeaders()
+  return req<T>(path, { method: 'POST', headers, body: JSON.stringify(body) })
 }
 
 // Default boundary used for the ExamShield demo — what a candidate is
@@ -35,22 +55,19 @@ export function grantConsent(
     allowed_actions: string[]
   }>
 ): Promise<ConsentRecord> {
-  return req('/api/consent/grant', {
-    method: 'POST',
-    body: JSON.stringify({
-      subject_id: subjectId,
-      subject_type: 'exam_session',
-      consent_type: 'behavioral_monitoring',
-      purpose: ['examination_integrity'],
-      data_categories: ['keystroke_timing', 'mouse_movement', 'tab_switching'],
-      collection_scope: 'session_only',
-      processing_scope: 'real_time_risk_scoring',
-      duration_days: 30,
-      version: '1.0',
-      prohibited_data: DEFAULT_PROHIBITED_DATA,
-      allowed_actions: [],
-      ...opts,
-    }),
+  return mutate('/api/consent/grant', {
+    subject_id: subjectId,
+    subject_type: 'exam_session',
+    consent_type: 'behavioral_monitoring',
+    purpose: ['examination_integrity'],
+    data_categories: ['keystroke_timing', 'mouse_movement', 'tab_switching'],
+    collection_scope: 'session_only',
+    processing_scope: 'real_time_risk_scoring',
+    duration_days: 30,
+    version: '1.0',
+    prohibited_data: DEFAULT_PROHIBITED_DATA,
+    allowed_actions: [],
+    ...opts,
   })
 }
 
@@ -59,17 +76,11 @@ export function getConsent(subjectId: string): Promise<ConsentRecord> {
 }
 
 export function simulateDrift(subjectId: string, scenario: DriftSimulationScenario): Promise<ConsentRecord> {
-  return req(`/api/consent/${encodeURIComponent(subjectId)}/simulate`, {
-    method: 'POST',
-    body: JSON.stringify({ scenario }),
-  })
+  return mutate(`/api/consent/${encodeURIComponent(subjectId)}/simulate`, { scenario })
 }
 
 export function withdrawConsent(subjectId: string, reason?: string): Promise<ConsentRecord> {
-  return req(`/api/consent/${encodeURIComponent(subjectId)}/withdraw`, {
-    method: 'POST',
-    body: JSON.stringify({ reason }),
-  })
+  return mutate(`/api/consent/${encodeURIComponent(subjectId)}/withdraw`, { reason })
 }
 
 export function reconsent(
@@ -82,10 +93,7 @@ export function reconsent(
     version: string
   }>
 ): Promise<ConsentRecord> {
-  return req('/api/consent/' + encodeURIComponent(subjectId) + '/reconsent', {
-    method: 'POST',
-    body: JSON.stringify(opts),
-  })
+  return mutate(`/api/consent/${encodeURIComponent(subjectId)}/reconsent`, opts)
 }
 
 export function authorizeAction(

@@ -154,7 +154,7 @@ function ConsentBoundary({ record }: { record: ConsentRecord }) {
 
 /* ─── Consent Firewall — test processing actions ────────────────────────── */
 function FirewallControls({
-  results, testing, lastAction, onTest, onRequestConsent, requesting,
+  results, testing, lastAction, onTest, onRequestConsent, requesting, locked,
 }: {
   results: Record<string, FirewallDecision>
   testing: boolean
@@ -162,6 +162,7 @@ function FirewallControls({
   onTest: (a: ProcessingAction) => void
   onRequestConsent: () => void
   requesting: boolean
+  locked: boolean
 }) {
   const lastResult = lastAction ? results[lastAction.action_name] : null
 
@@ -179,7 +180,8 @@ function FirewallControls({
           const r = results[a.action_name]
           const m = r ? FIREWALL_META[r.decision] : null
           return (
-            <button key={a.action_name} onClick={() => onTest(a)} disabled={testing}
+            <button key={a.action_name} onClick={() => onTest(a)} disabled={testing || locked}
+              title={locked ? 'Consent is invalid — nothing can be authorized until it is reset or renewed' : undefined}
               className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-left text-[11px] font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 background: 'var(--surface-3)',
@@ -192,9 +194,14 @@ function FirewallControls({
           )
         })}
       </div>
+      {locked && (
+        <p className="text-[11px] mt-2" style={{ color: 'var(--text-3)' }}>
+          Consent is invalid — every action blocks until it's reset or renewed.
+        </p>
+      )}
 
       <AnimatePresence mode="wait">
-        {lastAction && lastResult && (
+        {!locked && lastAction && lastResult && (
           <motion.div key={lastAction.action_name + lastResult.decision}
             initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
@@ -354,7 +361,10 @@ export function ConsentPanel({ subjectId }: { subjectId: string | null }) {
   const [lastAction, setLastAction] = useState<ProcessingAction | null>(null)
   const [testingAction, setTestingAction] = useState(false)
   const [requestingConsent, setRequestingConsent] = useState(false)
+  const [authError, setAuthError] = useState(false)
   const loadedFor = useRef<string | null>(null)
+
+  const isUnauthorized = (err: unknown) => (err as { status?: number })?.status === 401
 
   const load = useCallback(async (id: string) => {
     setStatus('loading')
@@ -367,7 +377,9 @@ export function ConsentPanel({ subjectId }: { subjectId: string | null }) {
       }
       setRecord(rec)
       setStatus('ready')
-    } catch {
+      setAuthError(false)
+    } catch (err) {
+      if (isUnauthorized(err)) setAuthError(true)
       setStatus('unavailable')
     }
   }, [])
@@ -379,15 +391,30 @@ export function ConsentPanel({ subjectId }: { subjectId: string | null }) {
     load(subjectId)
   }, [subjectId, load])
 
+  // Any mutation that can move the consent boundary — simulate, reset, or
+  // reconsent — invalidates every previously-cached firewall decision.
+  // Clearing eagerly (rather than trying to selectively patch stale
+  // entries) is what guarantees no stale ALLOW/BLOCK badge can survive a
+  // consent state change, including withdrawal (which runSimulation also
+  // handles, as the 'withdraw' scenario).
+  const clearFirewallCache = useCallback(() => {
+    setFirewallResults({})
+    setLastAction(null)
+  }, [])
+
   const runSimulation = useCallback(async (scenario: DriftSimulationScenario) => {
     if (!subjectId) return
     setBusy(true)
     try {
       const rec = await simulateDrift(subjectId, scenario)
       setRecord(rec)
-    } catch { /* backend unavailable — no-op */ }
+      clearFirewallCache()
+      setAuthError(false)
+    } catch (err) {
+      if (isUnauthorized(err)) setAuthError(true)
+    }
     setBusy(false)
-  }, [subjectId])
+  }, [subjectId, clearFirewallCache])
 
   const reset = useCallback(async () => {
     if (!subjectId) return
@@ -395,11 +422,13 @@ export function ConsentPanel({ subjectId }: { subjectId: string | null }) {
     try {
       const rec = await simulateDrift(subjectId, 'reset')
       setRecord(rec)
-      setFirewallResults({})
-      setLastAction(null)
-    } catch { /* ignore */ }
+      clearFirewallCache()
+      setAuthError(false)
+    } catch (err) {
+      if (isUnauthorized(err)) setAuthError(true)
+    }
     setBusy(false)
-  }, [subjectId])
+  }, [subjectId, clearFirewallCache])
 
   const testAction = useCallback(async (action: ProcessingAction) => {
     if (!subjectId) return
@@ -427,9 +456,16 @@ export function ConsentPanel({ subjectId }: { subjectId: string | null }) {
         version: bumpVersion(boundary.version),
       })
       setRecord(rec)
+      // The boundary moved — every other cached decision is stale. Clear
+      // all of them, then immediately re-test only the action the user
+      // was just looking at, so its badge updates without a visible gap.
+      setFirewallResults({})
       const result = await authorizeAction(subjectId, lastAction)
-      setFirewallResults(prev => ({ ...prev, [lastAction.action_name]: result }))
-    } catch { /* backend unavailable — no-op */ }
+      setFirewallResults({ [lastAction.action_name]: result })
+      setAuthError(false)
+    } catch (err) {
+      if (isUnauthorized(err)) setAuthError(true)
+    }
     setRequestingConsent(false)
   }, [subjectId, record, lastAction])
 
@@ -462,6 +498,13 @@ export function ConsentPanel({ subjectId }: { subjectId: string | null }) {
       <p className="text-[11px] mb-4" style={{ color: 'var(--text-3)' }}>
         Consent is not a one-time checkbox — this tracks whether current processing still matches what was originally agreed.
       </p>
+
+      {authError && (
+        <div className="mb-4 px-3 py-2.5 rounded-lg text-[12px]"
+          style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.28)', color: '#FBBF24' }}>
+          Your session has expired — sign in again to change consent. Viewing current status still works.
+        </div>
+      )}
 
       {status === 'unavailable' && (
         <div className="py-6 text-center">
@@ -518,6 +561,7 @@ export function ConsentPanel({ subjectId }: { subjectId: string | null }) {
                   onTest={testAction}
                   onRequestConsent={requestUpdatedConsent}
                   requesting={requestingConsent}
+                  locked={record.drift.status === 'CONSENT_INVALID'}
                 />
               </div>
             </div>

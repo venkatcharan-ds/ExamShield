@@ -1,3 +1,13 @@
+# Render free-tier web services spin down after ~15 minutes of inactivity;
+# the next request pays a cold-start penalty (dependency import + the
+# isolation-forest pretraining in ml/isolation_forest.py) of roughly
+# 30-50s. There is no code/config change on the free tier that removes
+# this without either upgrading the plan or running an external keepalive
+# pinger — both out of scope for this MVP as unnecessary infrastructure.
+#
+# Operational mitigation: warm the production backend (GET /api/health)
+# a minute or two before any live demo, and confirm it returns 200 before
+# starting.
 services:
   - type: web
     name: examshield-api
