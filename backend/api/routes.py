@@ -28,7 +28,7 @@ async def _broadcast_to_dashboard(data: dict) -> None:
     _dashboard_listeners.difference_update(dead)
 
 
-def _cumulative_assessment(snapshot: BehaviorSnapshot, session) -> RiskAssessment:
+def _cumulative_assessment(snapshot: BehaviorSnapshot, session):
     """Score the candidate from session-wide telemetry, not only one 3s window."""
     window_seconds = max((snapshot.window_end - snapshot.window_start) / 1000.0, 0.1)
     window_assessment = engine.assess(snapshot)
@@ -45,7 +45,7 @@ def _cumulative_assessment(snapshot: BehaviorSnapshot, session) -> RiskAssessmen
         features=cumulative,
         timestamp=window_assessment.timestamp,
         triggered_flags=flags,
-    )
+    ), window_assessment.triggered_flags
 
 
 @router.websocket("/ws/{session_id}")
@@ -134,14 +134,16 @@ async def exam_websocket(websocket: WebSocket, session_id: str, token: str = Que
                             await _broadcast_to_dashboard(session.to_dict())
                             continue
 
-                    # The session is the single source of truth: aggregate this
-                    # window before scoring so counts and risk never drift apart.
-                    assessment = _cumulative_assessment(snapshot, session)
+                    # One authoritative session state drives both the dashboard
+                    # metrics and the final score. Timeline flags remain scoped
+                    # to this window so historical events are not duplicated.
+                    assessment, window_flags = _cumulative_assessment(snapshot, session)
                     session.add_risk_event(
                         risk_score=assessment.risk_score,
                         risk_level=assessment.risk_level,
                         features=assessment.features.model_dump(),
                         flags=assessment.triggered_flags,
+                        timeline_flags=window_flags,
                     )
                     await websocket.send_json({"type": "risk_update", "payload": assessment.model_dump()})
                     await _broadcast_to_dashboard(session.to_dict())
