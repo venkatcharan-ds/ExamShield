@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react'
 import type { WebSocketMessage, RiskAssessment } from '@/types'
+import { createClient } from '@/lib/supabase/client'
 
 type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error'
 
@@ -20,11 +21,8 @@ export interface UseWebSocketReturn {
   isConnected: boolean
 }
 
-/** Normalise any URL to a WebSocket URL (ws:// or wss://) */
 function toWsUrl(raw: string): string {
-  return raw
-    .replace(/^https:\/\//, 'wss://')
-    .replace(/^http:\/\//, 'ws://')
+  return raw.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://')
 }
 
 export function useWebSocket({
@@ -35,24 +33,30 @@ export function useWebSocket({
   onRiskUpdate,
   enabled = true,
 }: UseWebSocketOptions): UseWebSocketReturn {
-  const wsRef                 = useRef<WebSocket | null>(null)
-  const reconnectTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const reconnectAttemptsRef  = useRef(0)
-  const mountedRef            = useRef(true)
-  const onRiskUpdateRef       = useRef(onRiskUpdate)
-  onRiskUpdateRef.current     = onRiskUpdate   // always latest without re-running effect
+  const wsRef = useRef<WebSocket | null>(null)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const reconnectAttemptsRef = useRef(0)
+  const mountedRef = useRef(true)
+  const onRiskUpdateRef = useRef(onRiskUpdate)
+  onRiskUpdateRef.current = onRiskUpdate
 
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected')
+  const MAX_ATTEMPTS = 5
+  const BASE_DELAY_MS = 2000
 
-  const MAX_ATTEMPTS    = 5
-  const BASE_DELAY_MS   = 2000
-
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!enabled || !sessionId || !mountedRef.current) return
 
-    const base   = process.env.NEXT_PUBLIC_WS_URL ?? "wss://examshield-api-production-1e2c.up.railway.app"
+    const supabase = createClient()
+    const { data: { session: authSession } } = await supabase.auth.getSession()
+    if (!authSession?.access_token) {
+      if (mountedRef.current) setConnectionState('error')
+      return
+    }
+
+    const base = process.env.NEXT_PUBLIC_WS_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
     const wsBase = toWsUrl(base)
-    const url    = `${wsBase}/ws/${sessionId}`
+    const url = `${wsBase}/ws/${encodeURIComponent(sessionId)}?token=${encodeURIComponent(authSession.access_token)}`
 
     try {
       setConnectionState('connecting')
@@ -63,8 +67,6 @@ export function useWebSocket({
         if (!mountedRef.current) { ws.close(); return }
         setConnectionState('connected')
         reconnectAttemptsRef.current = 0
-
-        // Register session with backend
         ws.send(JSON.stringify({
           type: 'session_start',
           payload: {
@@ -89,7 +91,6 @@ export function useWebSocket({
         if (!mountedRef.current) return
         setConnectionState('disconnected')
         wsRef.current = null
-
         if (reconnectAttemptsRef.current < MAX_ATTEMPTS && enabled) {
           const delay = BASE_DELAY_MS * Math.pow(1.5, reconnectAttemptsRef.current)
           reconnectAttemptsRef.current++
@@ -100,7 +101,6 @@ export function useWebSocket({
       }
 
       ws.onerror = () => {
-        // onerror always precedes onclose — let onclose handle reconnect
         if (mountedRef.current) setConnectionState('error')
         ws.close()
       }
@@ -111,22 +111,19 @@ export function useWebSocket({
 
   useEffect(() => {
     mountedRef.current = true
-    connect()
+    void connect()
     return () => {
       mountedRef.current = false
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
       if (wsRef.current) {
-        wsRef.current.onclose = null   // prevent reconnect on intentional unmount close
+        wsRef.current.onclose = null
         wsRef.current.close()
       }
     }
   }, [connect])
 
   const send = useCallback((message: WebSocketMessage) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message))
-    }
-    // If not connected, exam page queues snapshots itself
+    if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(message))
   }, [])
 
   return { send, connectionState, isConnected: connectionState === 'connected' }

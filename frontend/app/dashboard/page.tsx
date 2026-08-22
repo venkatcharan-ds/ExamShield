@@ -11,11 +11,9 @@ import {
   Users, WifiOff, Play, RotateCcw, ExternalLink, X,
   FileText, ChevronDown, ChevronUp, Pause, Search,
 } from 'lucide-react'
-import type { CandidateSession, TimelineEvent, DemoScenario } from '@/types'
-import {
-  SCENARIOS, buildInitialSession,
-  getRiskColor, getRiskLabel, getRiskLevel, getScenarioMeta,
-} from '@/services/demoScenarios'
+import type { CandidateSession, TimelineEvent } from '@/types'
+import { getRiskColor, getRiskLabel, getRiskLevel } from '@/services/demoScenarios'
+import { createClient } from '@/lib/supabase/client'
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 function toWsUrl(s: string) {
@@ -190,7 +188,7 @@ function Timeline({ events }: { events: TimelineEvent[] }) {
     return (
       <div className="text-center py-8 flex flex-col items-center gap-2">
         <Clock className="w-5 h-5" style={{ color: 'var(--text-3)', opacity: 0.5 }} />
-        <p className="text-xs" style={{ color: 'var(--text-3)' }}>Run a scenario to see events</p>
+        <p className="text-xs" style={{ color: 'var(--text-3)' }}>Waiting for candidate activity…</p>
       </div>
     )
   }
@@ -475,7 +473,7 @@ function BehaviorAnalysisReport({ session }: { session: CandidateSession | null 
           <div className="label">Behavior Analysis Report</div>
         </div>
         <p className="text-xs mt-3 text-center py-4" style={{ color: 'var(--text-3)' }}>
-          Run a scenario to generate the analysis report.
+          Start a real exam session to generate the analysis report.
         </p>
       </div>
     )
@@ -1088,53 +1086,6 @@ function SessionReviewModal({
   )
 }
 
-/* ─── Demo Controls ──────────────────────────────────────────────────────── */
-function DemoControls({
-  onRun, active, running,
-}: { onRun: (s: DemoScenario) => void; active: DemoScenario | null; running: boolean }) {
-  const scenarios: DemoScenario[] = ['normal', 'suspicious', 'cheating']
-
-  return (
-    <div className="space-y-2">
-      {scenarios.map(scenario => {
-        const meta    = getScenarioMeta(scenario)
-        const isActive = active === scenario && running
-
-        return (
-          <button key={scenario} onClick={() => onRun(scenario)} disabled={running}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left
-                       transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              background: isActive ? 'rgba(255,255,255,0.04)' : 'transparent',
-              border:     `1px solid ${isActive ? 'rgba(255,255,255,0.12)' : 'var(--border-0)'}`,
-            }}>
-            <div className="w-2 h-2 rounded-full flex-shrink-0 transition-all duration-300"
-              style={{
-                background: meta.color,
-                boxShadow:  isActive ? `0 0 8px ${meta.color}` : 'none',
-              }} />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium" style={{ color: 'var(--text-0)' }}>
-                {meta.label}
-              </div>
-              <div className="text-[11px] truncate" style={{ color: 'var(--text-3)' }}>
-                {meta.description}
-                <span className="ml-2 font-mono" style={{ color: meta.color, opacity: 0.7 }}>
-                  ({meta.expectedRisk})
-                </span>
-              </div>
-            </div>
-            {isActive
-              ? <Activity className="w-3.5 h-3.5 animate-pulse flex-shrink-0" style={{ color: 'var(--text-2)' }} />
-              : <Play className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--text-3)' }} />
-            }
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 /* ─── Integrity Index ────────────────────────────────────────────────────── */
 interface IntegrityTier {
   min: number
@@ -1362,7 +1313,7 @@ function IntegrityIndexCard({ riskScore, hasSession }: { riskScore: number; hasS
           </div>
           <p className="text-xs" style={{ color: 'var(--text-3)' }}>No active session</p>
           <p className="text-[11px] mt-1" style={{ color: 'var(--text-3)', opacity: 0.55 }}>
-            Run a scenario to calculate
+            Start a real exam session to calculate
           </p>
         </div>
       )}
@@ -1397,259 +1348,6 @@ function useCountUp(target: number, duration = 1800, decimals = 0, triggered = t
   return value
 }
 
-/* ─── Institution Summary ────────────────────────────────────────────────── */
-const INST_DATA = {
-  total:       1248,
-  verified:    1089,
-  concerns:    133,
-  review:      20,
-  compromised: 6,
-  avgIndex:    94.2,
-  examDate:    'Today, 09:00 – 13:00 IST',
-  institution: 'National University Examination Board',
-}
-
-interface SummaryStatProps {
-  label: string
-  value: number
-  decimals?: number
-  suffix?: string
-  color: string
-  subLabel?: string
-  triggered: boolean
-}
-
-function SummaryStat({ label, value, decimals = 0, suffix = '', color, subLabel, triggered }: SummaryStatProps) {
-  const displayed = useCountUp(value, 1600, decimals, triggered)
-  const pct = useCountUp(
-    INST_DATA.total > 0 ? (value / INST_DATA.total) * 100 : 0,
-    1600, 1, triggered
-  )
-  const showPct = decimals === 0 && suffix === '' && label !== 'Avg. Integrity Index'
-
-  return (
-    <div className="rounded-xl p-4 flex flex-col gap-2"
-      style={{
-        background: 'var(--surface-1)',
-        border: `1px solid var(--border-0)`,
-        borderLeft: `3px solid ${color}`,
-      }}>
-      <div className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-3)' }}>
-        {label}
-      </div>
-      <div className="flex items-end gap-1.5">
-        <span className="text-2xl font-bold tabnum leading-none" style={{ color }}>
-          {decimals > 0 ? displayed.toFixed(decimals) : Math.round(displayed).toLocaleString()}
-        </span>
-        {suffix && (
-          <span className="text-sm font-medium mb-0.5" style={{ color, opacity: 0.7 }}>{suffix}</span>
-        )}
-      </div>
-      {subLabel && (
-        <div className="text-[11px]" style={{ color: 'var(--text-3)' }}>{subLabel}</div>
-      )}
-      {showPct && (
-        <div className="mt-1">
-          <div className="flex justify-between mb-1">
-            <span className="text-[9px]" style={{ color: 'var(--text-3)' }}>
-              {pct.toFixed(1)}% of total
-            </span>
-          </div>
-          <div className="h-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
-            <div
-              className="h-full rounded-full transition-all"
-              style={{
-                width: `${Math.min(100, pct)}%`,
-                background: color,
-                transition: 'width 1.6s cubic-bezier(0.22, 1, 0.36, 1)',
-              }}
-            />
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function InstitutionSummary() {
-  const sectionRef = useRef<HTMLDivElement>(null)
-  const [triggered, setTriggered] = useState(false)
-
-  useEffect(() => {
-    const el = sectionRef.current
-    if (!el) return
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setTriggered(true); obs.disconnect() } },
-      { threshold: 0.15 }
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
-
-  /* Distribution bar segments */
-  const dist = [
-    { pct: (INST_DATA.verified    / INST_DATA.total) * 100, color: '#22C55E' },
-    { pct: (INST_DATA.concerns    / INST_DATA.total) * 100, color: '#84CC16' },
-    { pct: (INST_DATA.review      / INST_DATA.total) * 100, color: '#F59E0B' },
-    { pct: (INST_DATA.compromised / INST_DATA.total) * 100, color: '#EF4444' },
-  ]
-
-  /* SVG arc for average index — same geometry as IntegrityIndexCard but smaller */
-  const R = 38; const cx = 50; const cy = 48
-  const angleAt = (frac: number) => Math.PI * (1 - frac)
-  const pt = (frac: number) => ({
-    x: cx + R * Math.cos(angleAt(frac)),
-    y: cy - R * Math.sin(angleAt(frac)),
-  })
-  const avgPct   = INST_DATA.avgIndex / 100
-  const arcStart = pt(0)
-  const arcEnd   = pt(avgPct)
-  const large    = avgPct > 0.5 ? 1 : 0
-
-  return (
-    <motion.section
-      ref={sectionRef}
-      className="mt-6"
-      initial={{ opacity: 0, y: 20 }}
-      animate={triggered ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {/* Section header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.25)' }}>
-            <Users className="w-4 h-4" style={{ color: '#818CF8' }} />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-0)' }}>
-              Sample Institution Analytics
-            </h2>
-            <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-3)' }}>
-              {INST_DATA.institution} · {INST_DATA.examDate}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
-          style={{
-            background: 'rgba(245,158,11,0.08)',
-            border: '1px solid rgba(245,158,11,0.20)',
-          }}>
-          <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#F59E0B' }} />
-          <span className="text-[10px] font-medium" style={{ color: '#FCD34D' }}>
-            Demonstration Data
-          </span>
-        </div>
-      </div>
-
-      {/* Main stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-        <SummaryStat label="Candidates Monitored" value={INST_DATA.total}
-          color="var(--text-0)" triggered={triggered} />
-        <SummaryStat label="Verified Sessions"    value={INST_DATA.verified}
-          color="#22C55E" triggered={triggered} />
-        <SummaryStat label="Minor Concerns"       value={INST_DATA.concerns}
-          color="#84CC16" triggered={triggered} />
-        <SummaryStat label="Requires Review"      value={INST_DATA.review}
-          color="#F59E0B" triggered={triggered} />
-        <SummaryStat label="Integrity Compromised" value={INST_DATA.compromised}
-          color="#EF4444" triggered={triggered} />
-        {/* Average index — custom card */}
-        <div className="rounded-xl p-4 flex flex-col gap-2"
-          style={{
-            background: 'var(--surface-1)',
-            border: '1px solid var(--border-0)',
-            borderLeft: '3px solid #22C55E',
-          }}>
-          <div className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-3)' }}>
-            Avg. Integrity Index
-          </div>
-          <div className="flex items-center gap-2">
-            <svg width="100" height="56" className="flex-shrink-0 overflow-visible">
-              <path
-                d={`M ${arcStart.x} ${arcStart.y} A ${R} ${R} 0 1 1 ${cx + R} ${cy}`}
-                fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="5" strokeLinecap="round"
-              />
-              {triggered && (
-                <motion.path
-                  d={`M ${arcStart.x} ${arcStart.y} A ${R} ${R} 0 ${large} 1 ${arcEnd.x} ${arcEnd.y}`}
-                  fill="none" stroke="#22C55E" strokeWidth="5" strokeLinecap="round"
-                  style={{ filter: 'drop-shadow(0 0 4px rgba(34,197,94,0.60))' }}
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
-                />
-              )}
-              <text x={cx} y={cy - 2} textAnchor="middle"
-                fill="white" fontSize="15" fontWeight="700" fontFamily="Inter"
-                style={{ fontFeatureSettings: '"tnum" 1' }}>
-                {triggered ? INST_DATA.avgIndex.toFixed(1) : '0.0'}
-              </text>
-              <text x={cx} y={cy + 11} textAnchor="middle"
-                fill="#22C55E" fontSize="7.5" fontWeight="500">
-                / 100
-              </text>
-            </svg>
-          </div>
-          <div className="text-[11px]" style={{ color: '#6EE7B7' }}>Verified Session</div>
-        </div>
-      </div>
-
-      {/* Distribution bar */}
-      <div className="rounded-2xl p-5"
-        style={{ background: 'var(--surface-1)', border: '1px solid var(--border-0)' }}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="label mb-0.5">Session Distribution</div>
-            <p className="text-[11px]" style={{ color: 'var(--text-3)' }}>
-              Integrity outcome breakdown across {INST_DATA.total.toLocaleString()} monitored candidates
-            </p>
-          </div>
-          <div className="text-right">
-            <div className="text-[10px]" style={{ color: 'var(--text-3)' }}>Clearance rate</div>
-            <div className="text-lg font-bold tabnum" style={{ color: '#22C55E' }}>
-              {(((INST_DATA.verified + INST_DATA.concerns) / INST_DATA.total) * 100).toFixed(1)}%
-            </div>
-          </div>
-        </div>
-
-        {/* Stacked bar */}
-        <div className="flex rounded-lg overflow-hidden h-3 mb-3 gap-px">
-          {dist.map((seg, i) => (
-            <motion.div key={i}
-              className="h-full first:rounded-l-lg last:rounded-r-lg"
-              style={{ background: seg.color }}
-              initial={{ width: 0 }}
-              animate={triggered ? { width: `${seg.pct}%` } : { width: 0 }}
-              transition={{ duration: 1.4, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
-            />
-          ))}
-        </div>
-
-        {/* Legend */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: 'Verified Sessions',     n: INST_DATA.verified,    color: '#22C55E' },
-            { label: 'Minor Concerns',        n: INST_DATA.concerns,    color: '#84CC16' },
-            { label: 'Requires Review',       n: INST_DATA.review,      color: '#F59E0B' },
-            { label: 'Integrity Compromised', n: INST_DATA.compromised, color: '#EF4444' },
-          ].map(l => (
-            <div key={l.label} className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: l.color }} />
-              <div>
-                <div className="text-[11px] font-medium tabnum" style={{ color: l.color }}>
-                  {l.n.toLocaleString()}
-                </div>
-                <div className="text-[10px]" style={{ color: 'var(--text-3)' }}>{l.label}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </motion.section>
-  )
-}
-
 /* ─── Risk Chart ─────────────────────────────────────────────────────────── */
 function RiskChart({ data, color }: { data: { t: number; score: number }[]; color: string }) {
   if (data.length < 2) {
@@ -1657,7 +1355,7 @@ function RiskChart({ data, color }: { data: { t: number; score: number }[]; colo
       <div className="h-36 flex flex-col items-center justify-center gap-2"
         style={{ color: 'var(--text-3)' }}>
         <Activity className="w-5 h-5 opacity-30" />
-        <p className="text-xs">Run a scenario to see the trend</p>
+        <p className="text-xs">Start a real exam session to see the trend</p>
       </div>
     )
   }
@@ -1700,12 +1398,9 @@ function RiskChart({ data, color }: { data: { t: number; score: number }[]; colo
 export default function DashboardPage() {
   const [session,        setSession]        = useState<CandidateSession | null>(null)
   const [wsConnected,    setWsConnected]    = useState(false)
-  const [activeScenario, setActiveScenario] = useState<DemoScenario | null>(null)
-  const [isRunning,      setIsRunning]      = useState(false)
   const [showAlert,      setShowAlert]      = useState(false)
   const [alertDismissed, setAlertDismissed] = useState(false)
   const [showReview,     setShowReview]     = useState(false)
-  const timeoutsRef  = useRef<ReturnType<typeof setTimeout>[]>([])
   const prevScore    = useRef(0)
 
   /* Trigger alert when score crosses 70 */
@@ -1717,12 +1412,15 @@ export default function DashboardPage() {
 
   /* Backend WS for live student sessions */
   useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_WS_URL ?? "wss://examshield-api-production-1e2c.up.railway.app"
-    const url  = `${toWsUrl(base)}/ws-dashboard`
+    const base = process.env.NEXT_PUBLIC_WS_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
     let ws: WebSocket, timer: ReturnType<typeof setTimeout>, attempts = 0
 
-    const connect = () => {
+    const connect = async () => {
       try {
+        const { data } = await createClient().auth.getSession()
+        const token = data.session?.access_token
+        if (!token) { setWsConnected(false); return }
+        const url = `${toWsUrl(base)}/ws-dashboard?token=${encodeURIComponent(token)}`
         ws = new WebSocket(url)
         ws.onopen  = () => { setWsConnected(true); attempts = 0 }
         ws.onclose = () => {
@@ -1749,61 +1447,11 @@ export default function DashboardPage() {
             }
           } catch { /* ignore */ }
         }
-      } catch { /* demo-only mode */ }
+      } catch { setWsConnected(false) }
     }
     connect()
     return () => { clearTimeout(timer); try { ws?.close() } catch { /* ignore */ } }
   }, [])
-
-  /* Demo runner */
-  const clearT = () => { timeoutsRef.current.forEach(clearTimeout); timeoutsRef.current = [] }
-
-  const runScenario = useCallback((scenarioType: DemoScenario) => {
-    clearT()
-    setShowAlert(false)
-    setAlertDismissed(false)
-    prevScore.current = 0
-    setIsRunning(true)
-    setActiveScenario(scenarioType)
-    setSession(buildInitialSession(scenarioType, `demo-${scenarioType}-${Date.now()}`))
-
-    SCENARIOS[scenarioType].forEach(step => {
-      const t = setTimeout(() => {
-        const now = Date.now()
-        const newEvents: TimelineEvent[] = step.events.map(ev => ({
-          id:          `${now}-${ev.type}-${Math.random().toString(36).slice(2, 6)}`,
-          timestamp:   now,
-          type:        ev.type,
-          description: ev.description,
-          severity:    ev.severity,
-        }))
-        setSession(prev => !prev ? prev : {
-          ...prev,
-          current_risk_score: step.riskScore,
-          risk_level:  getRiskLevel(step.riskScore),
-          features:    step.features,
-          risk_history: [...(prev.risk_history ?? []), { time: now, score: step.riskScore }].slice(-60),
-          timeline:    mergeTimeline(prev.timeline ?? [], newEvents),
-        })
-      }, step.delay)
-      timeoutsRef.current.push(t)
-    })
-
-    const lastDelay = SCENARIOS[scenarioType][SCENARIOS[scenarioType].length - 1].delay
-    timeoutsRef.current.push(setTimeout(() => setIsRunning(false), lastDelay + 1500))
-  }, [])
-
-  const reset = () => {
-    clearT()
-    setSession(null)
-    setActiveScenario(null)
-    setIsRunning(false)
-    setShowAlert(false)
-    setAlertDismissed(false)
-    prevScore.current = 0
-  }
-
-  useEffect(() => () => clearT(), [])
 
   /* Derived */
   const riskScore    = session?.current_risk_score ?? 0
@@ -1811,8 +1459,6 @@ export default function DashboardPage() {
   const riskColor    = getRiskColor(riskScore)
   const alertCount   = (session?.timeline ?? []).filter(e => e.severity !== 'info').length
   const chartData    = (session?.risk_history ?? []).map((h, i) => ({ t: i, score: Math.round(h.score) }))
-  /* Demo-scenario sessions are client-side simulations (session_id: `demo-*`) — never real candidate data */
-  const isDemoSession = session?.session_id?.startsWith('demo-') ?? false
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--surface-0)' }}>
@@ -1853,15 +1499,8 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             {/* Connection badge */}
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
-              style={isDemoSession
-                ? { background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)' }
-                : { background: 'var(--surface-2)', border: '1px solid var(--border-0)' }}>
-              {isDemoSession ? (
-                <>
-                  <AlertTriangle className="w-3 h-3" style={{ color: '#F59E0B' }} />
-                  <span className="text-[11px] font-bold tracking-wide" style={{ color: '#FCD34D' }}>SIMULATION MODE</span>
-                </>
-              ) : wsConnected ? (
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border-0)' }}>
+              {wsConnected ? (
                 <>
                   <div className="w-1.5 h-1.5 rounded-full pulse-low" style={{ background: 'var(--risk-green)' }} />
                   <span className="text-[11px] font-medium" style={{ color: '#6EE7B7', opacity: 0.75 }}>LIVE</span>
@@ -1869,7 +1508,7 @@ export default function DashboardPage() {
               ) : (
                 <>
                   <WifiOff className="w-3 h-3" style={{ color: 'var(--text-3)' }} />
-                  <span className="text-[11px]" style={{ color: 'var(--text-3)' }}>Demo mode</span>
+                  <span className="text-[11px]" style={{ color: 'var(--text-3)' }}>Waiting</span>
                 </>
               )}
             </div>
@@ -1929,13 +1568,6 @@ export default function DashboardPage() {
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <div className="label">Candidate</div>
-                        {isDemoSession && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase"
-                            style={{ color: '#FCD34D', background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.35)' }}>
-                            <AlertTriangle className="w-2.5 h-2.5" />
-                            Simulated data — not a real candidate
-                          </span>
-                        )}
                       </div>
                       <div className="flex items-start gap-2 mb-4">
                         <div>
@@ -2012,7 +1644,7 @@ export default function DashboardPage() {
                       <Users className="w-7 h-7 mx-auto mb-2" style={{ color: 'var(--text-3)', opacity: 0.4 }} />
                       <p className="text-sm" style={{ color: 'var(--text-3)' }}>No active session</p>
                       <p className="text-xs mt-1" style={{ color: 'var(--text-3)', opacity: 0.6 }}>
-                        Run a demo scenario →
+                        Waiting for a candidate exam session…
                       </p>
                     </div>
                   </div>
@@ -2054,29 +1686,6 @@ export default function DashboardPage() {
             {/* Integrity Index */}
             <IntegrityIndexCard riskScore={riskScore} hasSession={!!session} />
 
-            {/* Demo controls */}
-            <div className="rounded-2xl p-5"
-              style={{ background: 'var(--surface-1)', border: '1px solid var(--border-0)' }}>
-              <div className="flex items-center justify-between mb-1">
-                <div className="label">Testing &amp; Simulation</div>
-                {session && (
-                  <button onClick={reset}
-                    className="p-1.5 rounded-lg transition-colors duration-150"
-                    style={{ color: 'var(--text-3)' }}>
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-              <p className="text-[10px] mb-3" style={{ color: 'var(--text-3)' }}>
-                Simulated candidates for demoing the risk engine — not real exam sessions.
-              </p>
-              <DemoControls onRun={runScenario} active={activeScenario} running={isRunning} />
-              <p className="text-[10px] mt-3 leading-relaxed" style={{ color: 'var(--text-3)' }}>
-                Client-side simulation — works without a backend connection. Numbers in brackets
-                show expected risk range.
-              </p>
-            </div>
-
             {/* Timeline */}
             <div className="rounded-2xl p-5"
               style={{ background: 'var(--surface-1)', border: '1px solid var(--border-0)' }}>
@@ -2099,8 +1708,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Institution Summary */}
-        <InstitutionSummary />
       </div>
     </div>
   )

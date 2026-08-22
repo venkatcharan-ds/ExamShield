@@ -1,7 +1,8 @@
 """
 In-memory session store.
 Keeps state for all active exam sessions and their risk histories.
-For production: replace with PostgreSQL via Supabase.
+Each session is explicitly owned by one authenticated user so concurrent
+candidates can never be confused at the application data layer.
 """
 
 from dataclasses import dataclass, field
@@ -10,14 +11,6 @@ import time
 
 
 def _flag_type(flag: str) -> str:
-    """Map a risk-engine flag string to the specific timeline event type
-    it describes (paste/copy/tab_switch), rather than the generic
-    "risk_update". The dashboard's behavior-analysis report reconciles a
-    session's CURRENT (single-window) features against its full timeline
-    history — a paste event that pushed the score up a window ago must
-    still be recognizable in the timeline once the window has passed and
-    current_risk_score has moved on. Without a specific type here, that
-    reconciliation has nothing to match against."""
     lower = flag.lower()
     if "paste" in lower:
         return "paste"
@@ -32,6 +25,7 @@ def _flag_type(flag: str) -> str:
 class SessionState:
     session_id: str
     candidate_name: str
+    user_id: Optional[str] = None
     started_at: float = field(default_factory=lambda: time.time() * 1000)
     current_risk_score: float = 0.0
     risk_level: str = "low"
@@ -50,7 +44,6 @@ class SessionState:
         self.features_snapshot = features
         self.risk_history.append({"time": now, "score": risk_score})
 
-        # Add timeline entries for significant flags
         for flag in flags:
             severity = "critical" if risk_score > 70 else "warning" if risk_score > 30 else "info"
             self.timeline.append({
@@ -61,7 +54,6 @@ class SessionState:
                 "severity": severity,
             })
 
-        # Cap timeline at 50 entries
         if len(self.timeline) > 50:
             self.timeline = self.timeline[-50:]
 
@@ -78,12 +70,13 @@ class SessionState:
     def to_dict(self) -> dict:
         return {
             "session_id": self.session_id,
+            "user_id": self.user_id,
             "candidate_name": self.candidate_name,
             "exam_status": "active" if self.is_active else "completed",
             "current_risk_score": self.current_risk_score,
             "risk_level": self.risk_level,
-            "risk_history": self.risk_history[-60:],  # last 60 data points
-            "timeline": self.timeline[-20:],           # last 20 events
+            "risk_history": self.risk_history[-60:],
+            "timeline": self.timeline[-20:],
             "features": self.features_snapshot,
             "started_at": self.started_at,
             "exam_name": self.exam_name,
@@ -96,8 +89,12 @@ class SessionStore:
     def __init__(self):
         self._sessions: Dict[str, SessionState] = {}
 
-    def create(self, session_id: str, candidate_name: str) -> SessionState:
-        session = SessionState(session_id=session_id, candidate_name=candidate_name)
+    def create(self, session_id: str, candidate_name: str, user_id: Optional[str] = None) -> SessionState:
+        session = SessionState(
+            session_id=session_id,
+            candidate_name=candidate_name,
+            user_id=user_id,
+        )
         session.add_timeline_entry("exam_start", "Exam session started", "info")
         self._sessions[session_id] = session
         return session
@@ -105,17 +102,31 @@ class SessionStore:
     def get(self, session_id: str) -> Optional[SessionState]:
         return self._sessions.get(session_id)
 
-    def get_or_create(self, session_id: str, candidate_name: str) -> SessionState:
-        if session_id not in self._sessions:
-            return self.create(session_id, candidate_name)
-        return self._sessions[session_id]
+    def get_or_create(
+        self,
+        session_id: str,
+        candidate_name: str,
+        user_id: Optional[str] = None,
+    ) -> SessionState:
+        existing = self._sessions.get(session_id)
+        if existing is None:
+            return self.create(session_id, candidate_name, user_id)
+
+        # Never allow a reused session id to silently change ownership.
+        if user_id and existing.user_id and existing.user_id != user_id:
+            raise ValueError("session ownership mismatch")
+        if user_id and not existing.user_id:
+            existing.user_id = user_id
+        return existing
 
     def get_all(self) -> List[dict]:
         return [s.to_dict() for s in self._sessions.values()]
+
+    def get_for_user(self, user_id: str) -> List[dict]:
+        return [s.to_dict() for s in self._sessions.values() if s.user_id == user_id]
 
     def delete(self, session_id: str) -> None:
         self._sessions.pop(session_id, None)
 
 
-# Singleton
 store = SessionStore()

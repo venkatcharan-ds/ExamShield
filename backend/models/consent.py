@@ -1,14 +1,9 @@
 """
 Generic Consent Lifecycle store.
 
-Not exam-specific: any part of the app can request/grant/change/withdraw
-consent for any "subject" (a session id, a user id, a device id, ...) and
-any "consent_type". ExamShield's behavioral-monitoring consent is just the
-first caller of this module.
-
-For production: replace with PostgreSQL via Supabase (mirrors the same
-"in-memory now, swap the store later" pattern already used by
-models/session.py).
+Consent records are scoped to an authenticated owner. subject_id remains a
+separate generic identifier, but an owner can only read or mutate records
+that belong to their user account (unless an authorized admin is acting).
 """
 
 from dataclasses import dataclass, field, asdict
@@ -19,19 +14,6 @@ import uuid
 
 @dataclass
 class ConsentContext:
-    """A snapshot of what is being consented to at a point in time.
-
-    `prohibited_data` is a flat set of tags the subject explicitly ruled
-    out — it isn't limited to data categories; a purpose or a named action
-    can be listed there too (e.g. "behavioral_profiling"). Keeping this as
-    one generic tag list, rather than a separate field per concept, is what
-    lets the same schema serve any domain, not just exams.
-
-    `allowed_actions` is optional and additive: when empty (the default),
-    the firewall only checks purpose + data category, matching every
-    consent record created before this field existed. Populate it only
-    when a domain wants to name-check specific actions too.
-    """
     purpose: List[str] = field(default_factory=list)
     data_categories: List[str] = field(default_factory=list)
     collection_scope: str = "session_only"
@@ -73,11 +55,12 @@ class ConsentAuditEvent:
 class ConsentRecord:
     consent_id: str
     subject_id: str
+    owner_user_id: str
     subject_type: str
     consent_type: str
     granted_at: float
     expires_at: float
-    status: str  # "active" | "withdrawn"
+    status: str
     original_context: ConsentContext
     current_context: ConsentContext
     withdrawn_at: Optional[float] = None
@@ -98,6 +81,7 @@ class ConsentRecord:
         return {
             "consent_id": self.consent_id,
             "subject_id": self.subject_id,
+            "owner_user_id": self.owner_user_id,
             "subject_type": self.subject_type,
             "consent_type": self.consent_type,
             "granted_at": self.granted_at,
@@ -111,7 +95,7 @@ class ConsentRecord:
 
 
 class ConsentStore:
-    """In-memory store keyed by subject_id (one active consent per subject)."""
+    """In-memory store keyed by subject_id, with immutable owner_user_id."""
 
     def __init__(self):
         self._records: Dict[str, ConsentRecord] = {}
@@ -119,6 +103,7 @@ class ConsentStore:
     def grant(
         self,
         subject_id: str,
+        owner_user_id: str,
         subject_type: str,
         consent_type: str,
         purpose: List[str],
@@ -133,54 +118,41 @@ class ConsentStore:
         description: Optional[str] = None,
     ) -> ConsentRecord:
         now = time.time() * 1000
+        existing = self._records.get(subject_id)
+        if existing and existing.owner_user_id != owner_user_id:
+            raise ValueError("consent ownership mismatch")
         context = ConsentContext(
-            purpose=list(purpose),
-            data_categories=list(data_categories),
-            collection_scope=collection_scope,
-            processing_scope=processing_scope,
-            version=version,
-            prohibited_data=list(prohibited_data or []),
+            purpose=list(purpose), data_categories=list(data_categories),
+            collection_scope=collection_scope, processing_scope=processing_scope,
+            version=version, prohibited_data=list(prohibited_data or []),
             allowed_actions=list(allowed_actions or []),
         )
-        # Re-granting after a withdrawal/expiry starts a new consent period,
-        # but the audit trail must survive across periods — carry it forward
-        # rather than starting a fresh, empty history.
-        existing = self._records.get(subject_id)
         record = ConsentRecord(
-            consent_id=str(uuid.uuid4()),
-            subject_id=subject_id,
-            subject_type=subject_type,
-            consent_type=consent_type,
-            granted_at=now,
+            consent_id=str(uuid.uuid4()), subject_id=subject_id,
+            owner_user_id=owner_user_id, subject_type=subject_type,
+            consent_type=consent_type, granted_at=now,
             expires_at=now + duration_days * 24 * 60 * 60 * 1000,
-            status="active",
-            original_context=context,
+            status="active", original_context=context,
             current_context=context.clone(),
             audit=existing.audit if existing else [],
         )
-        record.log(
-            event,
-            description or ("Consent renewed" if existing else "Consent granted"),
-            previous_state={"status": existing.status} if existing else None,
-            new_state=context.to_dict(),
-        )
+        record.log(event, description or ("Consent renewed" if existing else "Consent granted"),
+                   previous_state={"status": existing.status} if existing else None,
+                   new_state=context.to_dict())
         self._records[subject_id] = record
         return record
 
     def get(self, subject_id: str) -> Optional[ConsentRecord]:
         return self._records.get(subject_id)
 
-    def get_or_default(self, subject_id: str) -> Optional[ConsentRecord]:
-        return self._records.get(subject_id)
-
-    def delete(self, subject_id: str) -> None:
-        self._records.pop(subject_id, None)
+    def get_for_user(self, subject_id: str, owner_user_id: str) -> Optional[ConsentRecord]:
+        record = self._records.get(subject_id)
+        if record and record.owner_user_id == owner_user_id:
+            return record
+        return None
 
     def all_active(self) -> List[ConsentRecord]:
-        """Every record currently marked active — used for the boundary-impact
-        aggregate, a plain count over real records (no prediction, no ML)."""
         return [r for r in self._records.values() if r.status == "active"]
 
 
-# Singleton — mirrors models/session.py's `store`
 store = ConsentStore()
