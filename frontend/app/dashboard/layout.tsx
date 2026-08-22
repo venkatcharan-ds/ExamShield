@@ -1,10 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { DashboardWebSocketAuth } from '@/components/DashboardWebSocketAuth'
 
 /**
- * Server-side auth guard for /dashboard — belt-and-suspenders alongside the
- * middleware check. Runs before the existing client dashboard page renders;
- * does not modify that page's logic at all.
+ * Server-side auth guard for /dashboard plus authenticated WebSocket boundary.
  */
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -14,5 +13,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/sign-in?next=/dashboard')
   }
 
-  return <>{children}</>
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    redirect('/sign-in?next=/dashboard')
+  }
+
+  return (
+    <DashboardWebSocketAuth accessToken={session.access_token}>
+      {children}
+    </DashboardWebSocketAuth>
+  )
 }
