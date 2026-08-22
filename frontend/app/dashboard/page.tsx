@@ -1394,23 +1394,114 @@ function RiskChart({ data, color }: { data: { t: number; score: number }[]; colo
   )
 }
 
+/* ─── Candidate Selector Strip ───────────────────────────────────────────── */
+function CandidateSelector({
+  sessions,
+  selectedId,
+  onSelect,
+}: {
+  sessions: Record<string, CandidateSession>
+  selectedId: string | null
+  onSelect: (id: string) => void
+}) {
+  const list = Object.values(sessions)
+  if (list.length === 0) return null
+
+  return (
+    <div className="rounded-2xl p-4 mb-5"
+      style={{ background: 'var(--surface-1)', border: '1px solid var(--border-0)' }}>
+      <div className="flex items-center gap-2 mb-3">
+        <Users className="w-3.5 h-3.5" style={{ color: 'var(--text-3)' }} />
+        <span className="label">Candidates</span>
+        <span className="text-[10px] px-1.5 py-0.5 rounded-md font-mono tabnum"
+          style={{ background: 'var(--surface-2)', color: 'var(--text-3)', border: '1px solid var(--border-0)' }}>
+          {list.length}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {list.map(s => {
+          const isSelected = s.session_id === selectedId
+          const score = s.current_risk_score ?? 0
+          const color = getRiskColor(score)
+          const level = getRiskLevel(score)
+          const isActive = s.exam_status === 'active'
+          return (
+            <button
+              key={s.session_id}
+              onClick={() => onSelect(s.session_id)}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-all duration-200"
+              style={{
+                background: isSelected
+                  ? `${color}12`
+                  : 'rgba(255,255,255,0.03)',
+                border: isSelected
+                  ? `1px solid ${color}35`
+                  : '1px solid var(--border-0)',
+                boxShadow: isSelected ? `0 0 16px ${color}18` : 'none',
+                outline: 'none',
+              }}
+            >
+              {/* Live indicator or status dot */}
+              <div
+                className={isActive ? (level === 'high' ? 'pulse-high' : level === 'medium' ? 'pulse-medium' : 'pulse-low') : ''}
+                style={{
+                  width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                  background: isActive ? color : 'rgba(255,255,255,0.20)',
+                }}
+              />
+              <div>
+                <div className="text-xs font-semibold" style={{ color: isSelected ? 'var(--text-0)' : 'var(--text-2)' }}>
+                  {s.candidate_name}
+                </div>
+                <div className="text-[10px] flex items-center gap-1.5 mt-0.5">
+                  <span className="tabnum font-mono" style={{ color }}>
+                    {Math.round(score)}
+                  </span>
+                  <span style={{ color: 'var(--text-3)' }}>·</span>
+                  <span style={{ color: isActive ? '#6EE7B7' : 'var(--text-3)' }}>
+                    {isActive ? 'Active' : 'Completed'}
+                  </span>
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 /* ─── Main Dashboard ─────────────────────────────────────────────────────── */
 export default function DashboardPage() {
-  const [session,        setSession]        = useState<CandidateSession | null>(null)
-  const [wsConnected,    setWsConnected]    = useState(false)
-  const [showAlert,      setShowAlert]      = useState(false)
-  const [alertDismissed, setAlertDismissed] = useState(false)
-  const [showReview,     setShowReview]     = useState(false)
-  const prevScore    = useRef(0)
+  /* All candidate sessions, keyed by session_id */
+  const [sessions,         setSessions]        = useState<Record<string, CandidateSession>>({})
+  /* The session_id the admin has pinned to view — never changed by incoming WS data */
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
+  const [wsConnected,      setWsConnected]     = useState(false)
+  const [showAlert,        setShowAlert]       = useState(false)
+  const [alertDismissed,   setAlertDismissed]  = useState(false)
+  const [showReview,       setShowReview]      = useState(false)
+  const prevScore = useRef(0)
 
-  /* Trigger alert when score crosses 70 */
+  /* Derived: panel always reflects the admin's explicit selection */
+  const session = selectedSessionId ? (sessions[selectedSessionId] ?? null) : null
+
+  /* Reset alert state when the admin manually switches candidates */
+  const selectCandidate = useCallback((id: string) => {
+    setSelectedSessionId(id)
+    setShowAlert(false)
+    setAlertDismissed(false)
+    prevScore.current = 0
+  }, [])
+
+  /* Trigger alert when selected candidate's score crosses 70 */
   useEffect(() => {
     const s = session?.current_risk_score ?? 0
     if (s > 70 && prevScore.current <= 70 && !alertDismissed) setShowAlert(true)
     prevScore.current = s
   }, [session?.current_risk_score, alertDismissed])
 
-  /* Backend WS for live student sessions */
+  /* Backend WS — updates the session collection but never touches selectedSessionId */
   useEffect(() => {
     const base = process.env.NEXT_PUBLIC_WS_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
     let ws: WebSocket, timer: ReturnType<typeof setTimeout>, attempts = 0
@@ -1431,19 +1522,35 @@ export default function DashboardPage() {
         ws.onmessage = (e: MessageEvent) => {
           try {
             const msg = JSON.parse(e.data as string)
+
             if (msg.type === 'initial_state') {
-              const sessions: CandidateSession[] = msg.payload ?? []
-              if (sessions.length) setSession(sessions[sessions.length - 1])
+              const incoming: CandidateSession[] = msg.payload ?? []
+              const map: Record<string, CandidateSession> = {}
+              for (const s of incoming) map[s.session_id] = s
+              setSessions(map)
+              /* Select the first candidate only if nothing is selected yet */
+              setSelectedSessionId(prev =>
+                prev === null && incoming.length > 0 ? incoming[0].session_id : prev
+              )
             }
+
             if (msg.type === 'session_update') {
               const inc = msg.payload as CandidateSession
-              setSession(prev =>
-                (!prev || prev.session_id !== inc.session_id) ? inc : {
+              setSessions(prev => {
+                const existing = prev[inc.session_id]
+                const merged: CandidateSession = existing ? {
                   ...inc,
-                  risk_history: mergeHistory(prev.risk_history, inc.risk_history ?? []),
-                  timeline:     mergeTimeline(prev.timeline,    inc.timeline    ?? []),
-                }
+                  risk_history: mergeHistory(existing.risk_history, inc.risk_history ?? []),
+                  timeline:     mergeTimeline(existing.timeline,    inc.timeline    ?? []),
+                } : inc
+                return { ...prev, [inc.session_id]: merged }
+              })
+              /* If this is the first session we've ever seen, auto-select it */
+              setSelectedSessionId(prev =>
+                prev === null ? inc.session_id : prev
               )
+              /* selectedSessionId is intentionally NOT changed here —
+                 only the admin's explicit click via selectCandidate() may change it */
             }
           } catch { /* ignore */ }
         }
@@ -1454,16 +1561,17 @@ export default function DashboardPage() {
   }, [])
 
   /* Derived */
-  const riskScore    = session?.current_risk_score ?? 0
-  const riskLevel    = session?.risk_level ?? 'low'
-  const riskColor    = getRiskColor(riskScore)
-  const alertCount   = (session?.timeline ?? []).filter(e => e.severity !== 'info').length
-  const chartData    = (session?.risk_history ?? []).map((h, i) => ({ t: i, score: Math.round(h.score) }))
+  const totalSessions = Object.keys(sessions).length
+  const riskScore     = session?.current_risk_score ?? 0
+  const riskLevel     = session?.risk_level ?? 'low'
+  const riskColor     = getRiskColor(riskScore)
+  const alertCount    = (session?.timeline ?? []).filter(e => e.severity !== 'info').length
+  const chartData     = (session?.risk_history ?? []).map((h, i) => ({ t: i, score: Math.round(h.score) }))
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--surface-0)' }}>
 
-      {/* Alert banner — pointer-events-none wrapper ensures it never blocks UI */}
+      {/* Alert banner — fires only for the currently selected candidate */}
       <AnimatePresence>
         {showAlert && session && (
           <AlertBanner
@@ -1532,11 +1640,11 @@ export default function DashboardPage() {
         {/* Stat cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
           {[
-            { l: 'Sessions',    v: session ? '1' : '0', Icon: Users,          vColor: 'var(--text-0)' },
-            { l: 'Risk score',  v: session ? `${Math.round(riskScore)}` : '—', Icon: Activity, vColor: riskColor },
-            { l: 'Alerts',      v: String(alertCount),   Icon: AlertTriangle,
+            { l: 'Sessions',   v: String(totalSessions),                                         Icon: Users,          vColor: 'var(--text-0)' },
+            { l: 'Risk score', v: session ? `${Math.round(riskScore)}` : '—',                    Icon: Activity,       vColor: riskColor },
+            { l: 'Alerts',     v: String(alertCount),                                             Icon: AlertTriangle,
               vColor: alertCount > 0 ? 'var(--risk-amber)' : 'var(--text-0)' },
-            { l: 'Status',      v: session?.exam_status ?? 'Idle', Icon: CheckCircle, vColor: 'var(--text-0)' },
+            { l: 'Status',     v: session?.exam_status ?? 'Idle',                                 Icon: CheckCircle,    vColor: 'var(--text-0)' },
           ].map(c => (
             <div key={c.l} className="rounded-xl p-4"
               style={{ background: 'var(--surface-1)', border: '1px solid var(--border-0)' }}>
@@ -1551,10 +1659,16 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {/* Candidate selector — visible only when more than 0 sessions exist */}
+        <CandidateSelector
+          sessions={sessions}
+          selectedId={selectedSessionId}
+          onSelect={selectCandidate}
+        />
+
         <div className="grid lg:grid-cols-3 gap-4">
           {/* ── Main panel ─────────────────────────────────────────────── */}
           <div className="lg:col-span-2 space-y-4">
-
 
             {/* Gauge + Candidate */}
             <div className="grid sm:grid-cols-2 gap-4">
