@@ -1,0 +1,84 @@
+name: Cleanup dashboard demo infrastructure
+
+on:
+  push:
+    branches: [fix/multi-user-isolation]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: ${{ !contains(github.event.head_commit.message, 'remove dashboard demo infrastructure') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/multi-user-isolation
+          fetch-depth: 0
+
+      - name: Remove demo-only dashboard code
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('frontend/app/dashboard/page.tsx')
+          s = p.read_text()
+
+          # Remove demo-only types/services and controls imports.
+          s = s.replace("import type { CandidateSession, TimelineEvent, DemoScenario } from '@/types'", "import type { CandidateSession, TimelineEvent } from '@/types'")
+          s = re.sub(r"import \{\n  SCENARIOS, buildInitialSession,\n  getRiskColor, getRiskLabel, getRiskLevel, getScenarioMeta,\n\} from '@/services/demoScenarios'", "import { getRiskColor, getRiskLabel, getRiskLevel } from '@/services/risk'", s)
+          # Keep the existing risk helpers if the project does not have a risk service.
+          if "from '@/services/risk'" in s and not Path('frontend/services/risk.ts').exists():
+              s = s.replace("import { getRiskColor, getRiskLabel, getRiskLevel } from '@/services/risk'", "import { getRiskColor, getRiskLabel, getRiskLevel } from '@/services/demoScenarios'")
+
+          # Remove the entire DemoControls component.
+          s = re.sub(r"/\* ─── Demo Controls ──────────────────────────────────────────────────────── \*/.*?\n/\* ─── Integrity Index ────────────────────────────────────────────────────── \*/", "/* ─── Integrity Index ────────────────────────────────────────────────────── */", s, flags=re.S)
+
+          # Remove the sample institution analytics section and its hard-coded data.
+          s = re.sub(r"/\* ─── Institution Summary ────────────────────────────────────────────────── \*/.*?\n/\* ─── Risk Chart ─────────────────────────────────────────────────────────── \*/", "/* ─── Risk Chart ─────────────────────────────────────────────────────────── */", s, flags=re.S)
+
+          # Remove demo state and timers.
+          s = re.sub(r"\n  const \[activeScenario, setActiveScenario\] = useState<DemoScenario \| null>\(null\)\n  const \[isRunning,      setIsRunning\]      = useState\(false\)", "", s)
+          s = re.sub(r"\n  const timeoutsRef  = useRef<ReturnType<typeof setTimeout>\[\]>\(\)\n", "\n", s)
+
+          # Remove the client-side demo runner block.
+          s = re.sub(r"\n  /\* Demo runner \*/.*?\n  /\* Derived \*/", "\n  /* Derived */", s, flags=re.S)
+
+          # Remove demo-specific derived state.
+          s = re.sub(r"\n  /\* Demo-scenario sessions are client-side simulations.*?\n  const isDemoSession = .*?\n", "\n", s, flags=re.S)
+
+          # Remove demo/simulation labels from the header and candidate card.
+          s = re.sub(r"\n            \{isDemoSession \? \(.*?\) : wsConnected \? \(", "\n            {wsConnected ? (", s, flags=re.S)
+          s = s.replace("<span className=\"text-[11px]\" style={{ color: 'var(--text-3)' }}>Demo mode</span>", "<span className=\"text-[11px]\" style={{ color: 'var(--text-3)' }}>Offline</span>")
+          s = re.sub(r"\n                        \{isDemoSession && \(.*?\n                        \)\}", "", s, flags=re.S)
+
+          # Replace empty-state wording that instructed users to run a demo.
+          s = s.replace("Run a demo scenario →", "Waiting for a candidate session…")
+          s = s.replace("Run a scenario to see events", "Waiting for candidate activity…")
+          s = s.replace("Run a scenario to generate the analysis report.", "Start an exam session to generate the analysis report.")
+          s = s.replace("Run a scenario to see the trend", "Start an exam session to see the trend")
+
+          # Remove the Testing & Simulation card and leave the real event timeline.
+          s = re.sub(r"\n            /\* Demo controls \*/.*?\n            /\* Timeline \*/", "\n            {/* Timeline */}", s, flags=re.S)
+
+          # Remove the fake institution summary mount.
+          s = re.sub(r"\n        \{\/\* Institution Summary \*\/\}\n        <InstitutionSummary \/>", "", s)
+
+          p.write_text(s)
+
+      - name: Type-check dashboard edits
+        run: |
+          cd frontend
+          npm ci --ignore-scripts
+          npx tsc --noEmit
+
+      - name: Commit cleanup and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/app/dashboard/page.tsx
+          git rm .github/workflows/cleanup-dashboard.yml
+          git commit -m 'fix: remove dashboard demo infrastructure'
+          git push origin fix/multi-user-isolation
