@@ -57,8 +57,6 @@ class SessionState:
         window_seconds = max(float(window_seconds), 0.0)
         self.telemetry_window_seconds += window_seconds
 
-        # typing_speed is keys/minute, so recover the approximate key count for
-        # this window and use it to build a session-wide rate.
         keydowns = max(0, round(float(features.get("typing_speed", 0.0)) * window_seconds / 60.0))
         self.telemetry_keydowns += keydowns
 
@@ -90,27 +88,32 @@ class SessionState:
             ) if self.telemetry_key_variance_weight else float(features.get("key_variance", 1000.0)),
             "mouse_activity": round(self.telemetry_mouse_events / total_seconds, 2),
             "idle_duration": round(self.telemetry_idle_seconds, 2),
-            # These are intentionally cumulative for the candidate card and
-            # risk scoring. The forensic timeline remains event-by-event.
             "tab_switch_count": min(100, self.telemetry_tab_switches),
             "copy_count": min(100, self.telemetry_copy_events),
             "paste_count": min(100, self.telemetry_paste_events),
         }
 
-    def add_risk_event(self, risk_score: float, risk_level: str, features: dict, flags: List[str]) -> None:
+    def add_risk_event(
+        self,
+        risk_score: float,
+        risk_level: str,
+        features: dict,
+        flags: List[str],
+        timeline_flags: Optional[List[str]] = None,
+    ) -> None:
         now = time.time() * 1000
         self.current_risk_score = risk_score
         self.risk_level = risk_level
         self.features_snapshot = features
         self.risk_history.append({"time": now, "score": risk_score})
 
-        # Flags are generated from the current telemetry window, so each
-        # forensic entry represents a real event observed at that time rather
-        # than re-emitting all historical flags on every snapshot.
-        for flag in flags:
+        # Risk flags are cumulative for scoring, but the forensic timeline must
+        # contain only the flags observed in this telemetry window. Otherwise a
+        # single paste would be re-rendered as a new paste every 3 seconds.
+        for flag in (timeline_flags if timeline_flags is not None else flags):
             severity = "critical" if risk_score > 70 else "warning" if risk_score > 30 else "info"
             self.timeline.append({
-                "id": f"{now}-{flag[:8]}",
+                "id": f"{now}-{flag[:8]}-{len(self.timeline)}",
                 "timestamp": now,
                 "type": _flag_type(flag),
                 "description": flag,
@@ -175,7 +178,6 @@ class SessionStore:
         if existing is None:
             return self.create(session_id, candidate_name, user_id)
 
-        # Never allow a reused session id to silently change ownership.
         if user_id and existing.user_id and existing.user_id != user_id:
             raise ValueError("session ownership mismatch")
         if user_id and not existing.user_id:
