@@ -22,10 +22,6 @@ async function req<T = ConsentRecord>(path: string, init?: RequestInit): Promise
   return res.json()
 }
 
-// Consent-mutating calls (grant/update/withdraw/simulate/reconsent) require
-// the same signed-in session the dashboard already holds — the backend
-// verifies this token against Supabase's public key. Read-only calls
-// (get/authorize/boundary-impact) don't need it and stay unauthenticated.
 async function authHeaders(): Promise<Record<string, string>> {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
@@ -37,10 +33,19 @@ async function mutate<T = ConsentRecord>(path: string, body: unknown): Promise<T
   return req<T>(path, { method: 'POST', headers, body: JSON.stringify(body) })
 }
 
-// Default boundary used for the ExamShield demo — what a candidate is
-// asked to agree to, and what's explicitly ruled out. This list lives
-// here (the frontend), not in the generic engine, on purpose.
-const DEFAULT_PROHIBITED_DATA = ['webcam', 'facial_recognition', 'behavioral_profiling', 'recruitment_profiling']
+// Single source of truth for the consent shown to ExamShield candidates.
+// The admin ConsentPanel uses grantConsent(), so the student consent created
+// here has the same purpose, data boundary, scope, duration and version.
+export const DEFAULT_CONSENT = {
+  purpose: ['examination_integrity'],
+  data_categories: ['keystroke_timing', 'mouse_movement', 'tab_switching'],
+  collection_scope: 'session_only',
+  processing_scope: 'real_time_risk_scoring',
+  duration_days: 30,
+  version: '1.0',
+  prohibited_data: ['webcam', 'facial_recognition', 'behavioral_profiling', 'recruitment_profiling'],
+  allowed_actions: [],
+} as const
 
 export function grantConsent(
   subjectId: string,
@@ -59,14 +64,7 @@ export function grantConsent(
     subject_id: subjectId,
     subject_type: 'exam_session',
     consent_type: 'behavioral_monitoring',
-    purpose: ['examination_integrity'],
-    data_categories: ['keystroke_timing', 'mouse_movement', 'tab_switching'],
-    collection_scope: 'session_only',
-    processing_scope: 'real_time_risk_scoring',
-    duration_days: 30,
-    version: '1.0',
-    prohibited_data: DEFAULT_PROHIBITED_DATA,
-    allowed_actions: [],
+    ...DEFAULT_CONSENT,
     ...opts,
   })
 }
@@ -107,12 +105,9 @@ export function authorizeAction(
 }
 
 export function getBoundaryImpact(dataCategory: string): Promise<BoundaryImpact> {
-  return req<BoundaryImpact>(`/api/consent/_boundary-impact?data_category=${encodeURIComponent(dataCategory)}`)
+  return req(`/api/consent/_boundary-impact?data_category=${encodeURIComponent(dataCategory)}`)
 }
 
-// The demo action catalog — ExamShield-specific, lives entirely outside the
-// generic firewall engine. Each entry is just a caller-supplied action the
-// firewall evaluates against whatever consent boundary currently exists.
 export const DEMO_ACTIONS: ProcessingAction[] = [
   { action_name: 'analyze_keystrokes', label: 'Analyze Keystrokes', purpose: 'examination_integrity', data_categories: ['keystroke_timing'] },
   { action_name: 'monitor_mouse', label: 'Monitor Mouse', purpose: 'examination_integrity', data_categories: ['mouse_movement'] },
