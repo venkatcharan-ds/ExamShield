@@ -1099,31 +1099,30 @@ interface IntegrityTier {
   explanation: string
 }
 
+/*
+ * Integrity Index zones — the exact inverse of the app's risk-score zones
+ * (getRiskColor/getRiskLabel in services/demoScenarios.ts use the same
+ * breakpoints and hex values, mirrored: risk 0-30 = green/low maps to
+ * integrity 71-100 = green/Normal, and so on).
+ */
 const INTEGRITY_TIERS: IntegrityTier[] = [
   {
-    min: 85, max: 100,
-    label: 'Verified Session',
+    min: 71, max: 100,
+    label: 'Normal',
     color: '#22C55E',
     glow: 'rgba(34,197,94,0.28)',
     explanation: 'Behavioral patterns are consistent and within expected norms. This session presents no integrity concerns.',
   },
   {
-    min: 60, max: 84,
-    label: 'Minor Concerns',
-    color: '#84CC16',
-    glow: 'rgba(132,204,22,0.22)',
-    explanation: 'Isolated anomalies detected but insufficient to indicate deliberate misconduct. Standard review advised.',
-  },
-  {
-    min: 30, max: 59,
-    label: 'Requires Review',
+    min: 31, max: 70,
+    label: 'Suspicious',
     color: '#F59E0B',
     glow: 'rgba(245,158,11,0.26)',
-    explanation: 'Multiple behavioral signals deviate from the candidate\'s baseline. Examiner review is recommended.',
+    explanation: 'Some behavioral signals deviate from expected patterns. Examiner review is recommended.',
   },
   {
-    min: 0, max: 29,
-    label: 'Integrity Compromised',
+    min: 0, max: 30,
+    label: 'High Risk',
     color: '#EF4444',
     glow: 'rgba(239,68,68,0.30)',
     explanation: 'Significant integrity violations detected. This session should be escalated for formal review.',
@@ -1131,10 +1130,11 @@ const INTEGRITY_TIERS: IntegrityTier[] = [
 ]
 
 function getIntegrityTier(index: number): IntegrityTier {
-  return INTEGRITY_TIERS.find(t => index >= t.min && index <= t.max) ?? INTEGRITY_TIERS[3]
+  return INTEGRITY_TIERS.find(t => index >= t.min && index <= t.max) ?? INTEGRITY_TIERS[2]
 }
 
 function IntegrityIndexCard({ riskScore, hasSession }: { riskScore: number; hasSession: boolean }) {
+  // Integrity Index is the inverse of risk: Integrity = 100 - Risk.
   const index = Math.round(Math.max(0, Math.min(100, 100 - riskScore)))
   const tier  = getIntegrityTier(index)
 
@@ -1150,13 +1150,17 @@ function IntegrityIndexCard({ riskScore, hasSession }: { riskScore: number; hasS
   const pct   = index / 100
   const start = pt(0)
   const fillPt = pt(pct)
-  const large  = pct > 0.5 ? 1 : 0
+  // This path only ever sweeps a fraction of a single semicircle (max 180°
+  // of the underlying circle), so the SVG large-arc-flag — which selects
+  // between an arc ≤180° and one >180° — must always be 0. Any pct>0.5
+  // branch here previously forced the reflex (long-way-round) arc, which is
+  // what produced the broken/clipped look at high scores like 79.
+  const large = 0
 
-  /* Tier segment boundaries on the arc track */
+  /* Tier segment boundaries on the arc track — exact 0/30/70/100 zones */
   const tiers = [
-    { end: 0.29, color: 'rgba(239,68,68,0.45)'  },
-    { end: 0.59, color: 'rgba(245,158,11,0.38)' },
-    { end: 0.84, color: 'rgba(132,204,22,0.35)' },
+    { end: 0.30, color: 'rgba(239,68,68,0.45)'  },
+    { end: 0.70, color: 'rgba(245,158,11,0.38)' },
     { end: 1.00, color: 'rgba(34,197,94,0.35)'  },
   ]
 
@@ -1196,14 +1200,17 @@ function IntegrityIndexCard({ riskScore, hasSession }: { riskScore: number; hasS
       {hasSession ? (
         <>
           {/* Arc + score */}
-          <div className="flex items-center gap-4">
-            <svg width="140" height="82" className="flex-shrink-0 overflow-visible">
+          <div className="flex items-center gap-4 flex-wrap">
+            <svg viewBox="0 0 140 82" className="w-full max-w-[150px] h-auto flex-shrink-0 overflow-visible">
               {/* Segmented track */}
               {tiers.map((seg, i) => {
                 const prev = i === 0 ? 0 : tiers[i - 1].end
                 const sp = pt(prev)
                 const ep = pt(seg.end)
-                const lg = (seg.end - prev) > 0.5 ? 1 : 0
+                // Same fix as the active-fill arc below: every segment lives
+                // within one semicircle (≤180° of the full circle), so the
+                // large-arc-flag is always 0 — it never needs the reflex arc.
+                const lg = 0
                 return (
                   <path key={i}
                     d={`M ${sp.x} ${sp.y} A ${R} ${R} 0 ${lg} 1 ${ep.x} ${ep.y}`}
@@ -1253,7 +1260,7 @@ function IntegrityIndexCard({ riskScore, hasSession }: { riskScore: number; hasS
             </svg>
 
             {/* Explanation */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <motion.p
                 key={tier.label}
                 initial={{ opacity: 0, y: 4 }}
@@ -1267,20 +1274,34 @@ function IntegrityIndexCard({ riskScore, hasSession }: { riskScore: number; hasS
             </div>
           </div>
 
-          {/* Tier legend bar */}
-          <div className="mt-4 space-y-1.5">
+          {/* Tier legend bar — segment widths and labels both derived from
+              the same 0/30/70/100 breakpoints as the arc above, so the bar
+              actually corresponds to the gauge instead of showing 3 equal
+              thirds regardless of each zone's real size. */}
+          <div className="mt-4">
             <div className="flex rounded-lg overflow-hidden h-1.5">
-              {INTEGRITY_TIERS.slice().reverse().map(t => (
-                <div key={t.label}
-                  className="flex-1 transition-all duration-500"
-                  style={{
-                    background: index >= t.min ? t.color : `${t.color}28`,
-                  }} />
-              ))}
+              {INTEGRITY_TIERS.slice().reverse().map((t, i) => {
+                const prevEnd = i === 0 ? 0 : tiers[i - 1].end
+                const widthPct = (tiers[i].end - prevEnd) * 100
+                return (
+                  <div key={t.label}
+                    className="transition-all duration-500"
+                    style={{
+                      width: `${widthPct}%`,
+                      background: index >= t.min ? t.color : `${t.color}28`,
+                    }} />
+                )
+              })}
             </div>
-            <div className="flex justify-between">
-              {['0', '30', '60', '85', '100'].map(v => (
-                <span key={v} className="text-[9px] font-mono" style={{ color: 'rgba(255,255,255,0.18)' }}>
+            <div className="relative h-3 mt-1">
+              {[0, 30, 70, 100].map(v => (
+                <span key={v}
+                  className="absolute text-[9px] font-mono"
+                  style={{
+                    left: `${v}%`,
+                    transform: v === 0 ? 'none' : v === 100 ? 'translateX(-100%)' : 'translateX(-50%)',
+                    color: 'rgba(255,255,255,0.18)',
+                  }}>
                   {v}
                 </span>
               ))}
