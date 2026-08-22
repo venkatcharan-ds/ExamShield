@@ -1,12 +1,11 @@
 """ExamShield API routes with authenticated per-user session isolation."""
 
 import json
-import time
 from typing import Dict, Set
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Query, Depends
 from fastapi.responses import JSONResponse
 
-from auth import verify_supabase_token, require_user, require_admin
+from auth import verify_supabase_token, require_user
 from ml.isolation_forest import engine
 from ml.consent_firewall import firewall
 from models.session import store
@@ -63,25 +62,30 @@ async def exam_websocket(websocket: WebSocket, session_id: str, token: str = Que
                 except ValueError:
                     await websocket.close(code=1008, reason="Session belongs to another user")
                     return
+                if session.user_id != user_id:
+                    await websocket.close(code=1008, reason="Session belongs to another user")
+                    return
                 exam_name = payload.get("exam_name")
                 if exam_name:
                     session.exam_name = exam_name
                 questions_total = payload.get("questions_total")
                 if questions_total:
                     session.questions_total = questions_total
-                await websocket.send_json({"type": "session_ack", "payload": {"session_id": sid, "user_id": user_id}})
+                await websocket.send_json({"type": "session_ack", "payload": {"session_id": sid}})
                 await _broadcast_to_dashboard(session.to_dict())
 
             elif msg_type == "exam_progress":
                 payload = data.get("payload", {})
                 sid = payload.get("session_id", session_id)
                 session = store.get(sid)
-                if session and session.user_id == user_id:
-                    if payload.get("questions_answered") is not None:
-                        session.questions_answered = max(0, min(int(payload["questions_answered"]), session.questions_total or 999999))
-                    if payload.get("questions_total") is not None:
-                        session.questions_total = int(payload["questions_total"])
-                    await _broadcast_to_dashboard(session.to_dict())
+                if not session or session.user_id != user_id:
+                    await websocket.close(code=1008, reason="Session ownership mismatch")
+                    return
+                if payload.get("questions_answered") is not None:
+                    session.questions_answered = max(0, min(int(payload["questions_answered"]), session.questions_total or 999999))
+                if payload.get("questions_total") is not None:
+                    session.questions_total = int(payload["questions_total"])
+                await _broadcast_to_dashboard(session.to_dict())
 
             elif msg_type == "behavior_snapshot":
                 try:
@@ -89,7 +93,10 @@ async def exam_websocket(websocket: WebSocket, session_id: str, token: str = Que
                     if snapshot.session_id != session_id:
                         await websocket.close(code=1008, reason="Session id mismatch")
                         return
-                    session = store.get_or_create(snapshot.session_id, snapshot.candidate_name, user_id=user_id)
+                    session = store.get(snapshot.session_id)
+                    if not session or session.user_id != user_id:
+                        await websocket.close(code=1008, reason="Session ownership mismatch")
+                        return
 
                     consent_record = consent_store.get(snapshot.session_id)
                     if consent_record is not None:
@@ -132,10 +139,9 @@ async def exam_websocket(websocket: WebSocket, session_id: str, token: str = Que
 async def dashboard_websocket(websocket: WebSocket, token: str = Query(default="")):
     """Admin-only dashboard stream. Students cannot subscribe to all candidates."""
     try:
-        claims_user = verify_supabase_token(token)
-        # The WebSocket verifier intentionally uses the same signed JWT as REST.
-        # Admin role is checked by fetching the signed claims directly below.
         from auth import verify_supabase_claims, is_admin_claims
+        if not token:
+            raise ValueError("Missing token")
         if not is_admin_claims(verify_supabase_claims(token)):
             await websocket.close(code=1008, reason="Admin access required")
             return
@@ -159,8 +165,7 @@ async def dashboard_websocket(websocket: WebSocket, token: str = Query(default="
 
 @router.get("/api/sessions")
 async def get_all_sessions(user_id: str = Depends(require_user)):
-    """Students receive only their own sessions; admin gets the institution view."""
-    # The dashboard itself is admin-gated. A normal authenticated user gets only their data.
+    """Authenticated users receive only their own sessions."""
     return JSONResponse(content={"sessions": store.get_for_user(user_id)})
 
 
@@ -173,11 +178,9 @@ async def get_session(session_id: str, user_id: str = Depends(require_user)):
 
 
 @router.post("/api/sessions/{session_id}/end")
-async def end_session(session_id: str):
-    # Kept backward-compatible for the current exam client. Session ids are
-    # random and the WebSocket itself is authenticated/ownership-bound.
+async def end_session(session_id: str, user_id: str = Depends(require_user)):
     session = store.get(session_id)
-    if not session:
+    if not session or session.user_id != user_id:
         raise HTTPException(status_code=404, detail="Session not found")
     session.is_active = False
     return JSONResponse(content={"status": "ended", "session_id": session_id})
@@ -185,9 +188,4 @@ async def end_session(session_id: str):
 
 @router.get("/api/health")
 async def health_check():
-    return {
-        "status": "ok",
-        "model_trained": engine._is_trained,
-        "active_sessions": len(store.get_all()),
-        "dashboard_listeners": len(_dashboard_listeners),
-    }
+    return {"status": "ok", "model_trained": engine._is_trained, "active_sessions": len(store.get_all()), "dashboard_listeners": len(_dashboard_listeners)}
