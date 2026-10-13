@@ -6,7 +6,7 @@ import Link from 'next/link'
 import ThreeBackground from '@/components/ThreeBackground'
 import {
   Shield, EyeOff, Brain, Activity, ChevronRight,
-  Keyboard, MousePointer, LayoutGrid, Zap,
+  Keyboard, MousePointer, LayoutGrid,
   XCircle, CheckCircle2, ShieldCheck, Lock,
   Cpu, Terminal, ArrowRight, Sparkles, Radio,
 } from 'lucide-react'
@@ -259,21 +259,6 @@ export default function LandingPage() {
         <ThreeBackground />
 
         <div className="relative z-10 max-w-5xl mx-auto text-center">
-          {/* Track Badge */}
-          <motion.div
-            {...fade(0.1)}
-            className="inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full text-xs font-medium"
-            style={{
-              color: '#A5B4FC',
-              background: 'rgba(99,102,241,0.08)',
-              border: '1px solid rgba(99,102,241,0.25)',
-              boxShadow: '0 0 20px rgba(99,102,241,0.12)',
-            }}
-          >
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
-            <span>FAR AWAY 2026 · AI Examination Track · India</span>
-          </motion.div>
-
           {/* Cinematic Headline */}
           <motion.h1
             {...rise(0.18)}
